@@ -1,0 +1,19 @@
+{
+  "step": {
+    "user": {
+      "title": "SMHI ODP",
+      "description": "Select a name and location for the weather forecast.",
+      "data": {
+        "name": "Name",
+        "location": "Location"
+      }
+    }
+  },
+  "errors": {
+    "cannot_connect": "Failed to connect to the API. Check your connection.",
+    "unknown": "An unknown error occurred."
+  },
+  "abort": {
+    "already_configured": "This location is already configured."
+  }
+}
