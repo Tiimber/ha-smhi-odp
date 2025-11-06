@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*build/
+*dist/
+*egg-info/
+venv/
+.venv/
+
+# Home Assistant
+.HA_VERSION
+deps/
+*.db
+*.db-journal
+
+# Other
+.DS_Store
+*.log
