@@ -109,6 +109,60 @@ class SmhiWeather(CoordinatorEntity, WeatherEntity):
         """Return the wind bearing."""
         return self._get_current_data("wind_from_direction")
 
+    @property
+    def forecast(self) -> list[dict] | None:
+        """Return the forecast array for dashboard cards compatibility."""
+        if not self.coordinator.data:
+            return None
+
+        time_series = self.coordinator.data.get("timeSeries")
+        if not time_series:
+            return None
+
+        forecast_data = []
+        processed_days = set()
+        
+        now = dt_util.now()
+        today = now.date()
+
+        for entry in time_series:
+            entry_time = dt_util.parse_datetime(entry["time"])
+            if not entry_time:
+                continue
+                
+            entry_local = dt_util.as_local(entry_time)
+            entry_date = entry_local.date()
+            
+            if entry_date < today:
+                continue
+
+            if entry_date not in processed_days:
+                noon_entry = self._find_noon_entry(time_series, entry_date)
+                day_data = noon_entry["data"] if noon_entry else entry["data"]
+                
+                max_temp = self._get_daily_max_temp(time_series, entry_date)
+                min_temp = self._get_daily_min_temp(time_series, entry_date)
+
+                symbol = day_data.get("weather_symbol")
+                condition = next(
+                    (k for k, v in CONDITION_CLASSES.items() if symbol in v),
+                    None,
+                )
+
+                forecast_data.append({
+                    "datetime": entry_date.isoformat(),
+                    "temperature": max_temp,
+                    "templow": min_temp,
+                    "condition": condition,
+                    "precipitation": day_data.get("precipitation_amount_mean", 0) * 24,
+                })
+                processed_days.add(entry_date)
+                
+                if len(forecast_data) >= 10:
+                    break
+
+        return forecast_data if forecast_data else None
+
     def _get_current_data(self, key):
         """Helper to get current data."""
         if self.coordinator.data and self.coordinator.data.get("timeSeries"):
