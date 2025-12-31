@@ -2,9 +2,7 @@ import logging
 from datetime import timedelta
 from homeassistant.util import dt as dt_util
 
-# --- FIX: Import 'callback' ---
 from homeassistant.core import callback
-# --- END FIX ---
 
 from homeassistant.components.sensor import (
     SensorEntity,
@@ -285,11 +283,10 @@ class SmhiDailyForecastSensor(SmhiBaseSensor):
     # --- NEW DEBUGGING METHOD ---
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added to hass."""
-        #_LOGGER.warning(f"SMHI_ODP: async_added_to_hass CALLED for {self._name}")
         # Call the base CoordinatorEntity's method which adds the listener
         await super().async_added_to_hass()
-        #_LOGGER.warning(f"SMHI_ODP: super().async_added_to_hass() COMPLETED for {self._name}")
-    # --- END NEW DEBUGGING METHOD ---
+        # Calculate the initial temperature value
+        self._find_daily_max_temp()
 
     @property
     def native_value(self):
