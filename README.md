@@ -89,3 +89,7 @@ logger:
 
 Created by [@Tiimber](https://github.com/Tiimber).
 Data provided by [SMHI Open Data](https://www.smhi.se/data/oppna-data).
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](LICENSE).
