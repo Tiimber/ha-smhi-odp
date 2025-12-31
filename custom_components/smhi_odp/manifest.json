@@ -5,7 +5,10 @@
   "documentation": "https://github.com/Tiimber/smhi_odp",
   "iot_class": "cloud_polling",
   "version": "1.0.0",
-  "codeowners": ["@Tiimber"],
+  "codeowners": [
+    "@Tiimber"
+  ],
+  "issue_tracker": "https://github.com/Tiimber/smhi_odp/issues",
   "requirements": [],
   "dependencies": []
 }

@@ -19,12 +19,8 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-# Changed to .warning to make sure it's visible in logs
-#_LOGGER.warning("SMHI_ODP: Loading __init__.py file...")
-
-
 # Define the platform you want to load (sensor)
-PLATFORMS: list[Platform] = [Platform.SENSOR]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.WEATHER]
 
 
 class SmhiDataUpdateCoordinator(DataUpdateCoordinator):
@@ -38,12 +34,11 @@ class SmhiDataUpdateCoordinator(DataUpdateCoordinator):
         self.longitude = entry.data.get(CONF_LONGITUDE)
         self.client = httpx_client.get_async_client(hass)
         
-        # *** CHANGE: Set the update interval to 2 minutes for debugging ***
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(minutes=2),
+            update_interval=timedelta(minutes=60),
         )
 
     async def _async_update_data(self):
@@ -91,9 +86,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
     # Forward the setup to the sensor platform
-    #_LOGGER.warning("SMHI_ODP: Forwarding setup to sensor platform.")
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    #_LOGGER.warning("SMHI_ODP: Setup of sensor platform complete.")
     
     return True
 

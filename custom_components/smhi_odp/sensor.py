@@ -60,11 +60,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             sensors_to_add.append(SmhiDailyForecastSensor(coordinator, entry, i))
             #_LOGGER.warning(f"SMHI_ODP: Loop {i}: Successfully appended sensor.")
             
-        #_LOGGER.warning("SMHI_ODP: Creating 10 daily forecast sensors...")
-
         async_add_entities(sensors_to_add)
-        
-        #_LOGGER.warning("SMHI_ODP: async_add_entities CALLED successfully.")
 
     except Exception as e:
         _LOGGER.error(f"SMHI_ODP: Error in sensor.py async_setup_entry: {e}", exc_info=True)

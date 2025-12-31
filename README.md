@@ -1,57 +1,77 @@
-# SMHI ODP Weather Component
+# SMHI ODP Weather for Home Assistant
 
-This is a custom component for Home Assistant to integrate weather forecast data from the SMHI (Sveriges meteorologiska och hydrologiska institut) Open Data (ODP) API.
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
+
+Get comprehensive weather data from SMHI (Sveriges meteorologiska och hydrologiska institut) directly in Home Assistant. This custom integration uses the Open Data API to provide accurate current conditions and 10-day forecasts for any location in Sweden.
+
+![SMHI Sensor Mockup](assets/images/smhi_sensor_mockup.png)
 
 ## Features
 
-This component provides two main sets of sensors:
-
-### 1. Current Conditions
-* **Temperature:** Current air temperature.
-* **Humidity:** Current relative humidity.
-* **Wind Speed:** Current wind speed.
-* **Wind Direction:** Current wind direction.
-* **Pressure:** Current air pressure.
-* **Precipitation:** Current mean precipitation amount.
-
-### 2. Daily Forecasts
-Ten sensors representing the forecast for the next 10 days:
-* `sensor.smhi_odp_home_today`
-* `sensor.smhi_odp_home_tomorrow`
-* `sensor.smhi_odp_home_day_2`
-* `sensor.smhi_odp_home_day_3`
-* `sensor.smhi_odp_home_day_4`
-* `sensor.smhi_odp_home_day_5`
-* `sensor.smhi_odp_home_day_6`
-* `sensor.smhi_odp_home_day_7`
-* `sensor.smhi_odp_home_day_8`
-* `sensor.smhi_odp_home_day_9`
-
-The main state of each daily sensor is the **maximum temperature** for that day. All other forecast parameters for that time (humidity, wind, precipitation, etc.) are available as attributes.
+*   **Weather Platform**: A standard `weather` entity (e.g., `weather.smhi_home`) with current conditions and a 10-day forecast.
+*   **Current Conditions**: Temperature, Humidity, Wind Speed, Wind Direction, Pressure, and Precipitation.
+*   **10-Day Forecast**: Daily sensors showing the maximum temperature for the day, with detailed forecast data available as attributes.
+*   **Localization**: Fully localized for English and Swedish.
+*   **Easy Configuration**: Setup via the Home Assistant UI.
 
 ## Installation
 
-### Manual Installation
-1.  Copy the `smhi_odp` folder (containing `__init__.py`, `sensor.py`, `const.py`, etc.) into your Home Assistant's `custom_components` directory.
-2.  Restart Home Assistant.
+### Option 1: HACS (Recommended)
 
-### HACS (Home Assistant Community Store)
-This component is not yet in the default HACS store. You can add it as a custom repository:
-1.  Go to HACS > Integrations > (three dots in top right) > Custom repositories.
-2.  Paste the URL to this GitHub repository.
-3.  Select "Integration" as the category.
-4.  Click "Add", then find the component in HACS and install it.
+1.  Open HACS in Home Assistant.
+2.  Go to **Integrations** > **Triple dots** (top right) > **Custom repositories**.
+3.  Paste the URL of this repository: `https://github.com/Tiimber/smhi_odp`
+4.  Select **Integration** as the category.
+5.  Click **Add**.
+6.  Find **SMHI ODP** in the list and install it.
+7.  Restart Home Assistant.
+
+### Option 2: Manual Installation
+
+1.  Download the latest release.
+2.  Copy the `smhi_odp` directory to your `custom_components` folder (e.g., `/config/custom_components/smhi_odp`).
+3.  Restart Home Assistant.
 
 ## Configuration
 
-This component is configured via the Home Assistant UI.
+1.  Go to **Settings** > **Devices & Services**.
+2.  Click **Add Integration** and search for **SMHI ODP**.
+3.  Enter a friendly name (e.g., "Home").
+4.  Enter your **Latitude** and **Longitude**.
+5.  Click **Submit**.
 
-1.  Go to **Settings > Devices & Services**.
-2.  Click **"Add Integration"** and search for **"SMHI ODP"**.
-3.  Follow the prompts to enter:
-    * **Name:** A friendly name for this instance (e.g., "Home").
-    * **Latitude:** Your latitude.
-    * **Longitude:** Your longitude.
-4.  The component will be set up and your sensors will be created.
+## Sensors
 
-**Please note** that the component might take a little while to process the initial data from the API.
+The integration creates the following sensors:
+
+### Current Conditions
+*   `sensor.smhi_odp_home_temperature`
+*   `sensor.smhi_odp_home_humidity`
+*   `sensor.smhi_odp_home_wind_speed`
+*   `sensor.smhi_odp_home_wind_direction`
+*   `sensor.smhi_odp_home_pressure`
+*   `sensor.smhi_odp_home_precipitation`
+
+### Daily Forecasts
+*   `sensor.smhi_odp_home_today`
+*   `sensor.smhi_odp_home_tomorrow`
+*   `sensor.smhi_odp_home_day_2` ... `sensor.smhi_odp_home_day_9`
+
+*Note: The state of the daily forecast sensors is the **Maximum Temperature** for that day. Additional details are available in the sensor attributes.*
+
+## Issues & Debugging
+
+If you encounter issues, please check the [Issue Tracker](https://github.com/Tiimber/smhi_odp/issues).
+To enable debug logging, add the following to your `configuration.yaml`:
+
+```yaml
+logger:
+  default: info
+  logs:
+    custom_components.smhi_odp: debug
+```
+
+## Credits
+
+Created by [@Tiimber](https://github.com/Tiimber).
+Data provided by [SMHI Open Data](https://www.smhi.se/data/oppna-data).
