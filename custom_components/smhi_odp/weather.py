@@ -71,18 +71,32 @@ class SmhiWeather(CoordinatorEntity, WeatherEntity):
     def condition(self) -> str | None:
         """Return the current condition."""
         if not self.coordinator.data:
+            _LOGGER.warning("Weather: No coordinator data available")
             return None
             
         # Get the symbol from the first time series entry
         time_series = self.coordinator.data.get("timeSeries")
         if not time_series:
+            _LOGGER.warning("Weather: No timeSeries in coordinator data")
+            return None
+        
+        if not time_series[0].get("data"):
+            _LOGGER.warning("Weather: No data in first timeSeries entry")
             return None
             
         symbol = time_series[0]["data"].get("weather_symbol")
-        return next(
+        _LOGGER.info(f"Weather: Got weather_symbol: {symbol}, available keys: {list(time_series[0]['data'].keys())}")
+        
+        if symbol is None:
+            _LOGGER.warning("Weather: weather_symbol is None in API data")
+            return None
+        
+        condition = next(
             (k for k, v in CONDITION_CLASSES.items() if symbol in v),
             None,
         )
+        _LOGGER.info(f"Weather: Mapped symbol {symbol} to condition: {condition}")
+        return condition
 
     @property
     def native_temperature(self) -> float | None:
