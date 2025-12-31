@@ -321,17 +321,13 @@ class SmhiDailyForecastSensor(SmhiBaseSensor):
                 self._max_temp_data = {}
                 return
                 
-            # *** FIX: Use local timezone for all date comparisons ***
-            
-            # --- FIX: Use dt_util.now() with no args to get default HA timezone object ---
             # Get the current time in Home Assistant's configured timezone
             now_local = dt_util.now()
-            start_of_today_local = now_local.replace(hour=0, minute=0, second=0, microsecond=0)
+            today_local = now_local.date()
             
-            # Calculate the start and end of the target day
-            target_day_start = start_of_today_local + timedelta(days=self._day_offset)
-            target_day_end = target_day_start + timedelta(days=1)
-            
+            # Calculate the target date (not datetime, just date)
+            target_date = today_local + timedelta(days=self._day_offset)
+
             #_LOGGER.warning(f"[{self._name}] Finding max temp for day_offset {self._day_offset}")
             # --- FIX: Corrected variable name from target_key_end to target_day_start ---
             #_LOGGER.warning(f"[{self._name}] Target day start (local): {target_day_start}")
@@ -362,22 +358,20 @@ class SmhiDailyForecastSensor(SmhiBaseSensor):
                     #_LOGGER.warning(f"[{self._name}] ERROR: FAILED to parse entry time: {entry.get('time')}")
                     continue
 
-                # Check if this entry is within our target day
-                # Python's aware datetime objects handle the timezone comparison
-                if target_day_start <= entry_time_utc < target_day_end:
+                # Convert UTC time to local timezone, then get just the date
+                entry_time_local = dt_util.as_local(entry_time_utc)
+                entry_date = entry_time_local.date()
+                
+                # Check if this entry is for our target date
+                if entry_date == target_date:
                     data = entry.get("data")
                     if not data:
                         continue
                         
                     temp = data.get("air_temperature")
-                    if temp is not None:
-                        # Log the first found entry as a debug message
-                        # --- SYNTAX FIX: Changed self... to self._name ---
-                        #_LOGGER.warning(f"[{self._name}] MATCH: Entry {entry_time_utc} (UTC) is in range. Temp: {temp}")
-                        # --- END DEBUG LEVEL ---
-                        if temp > max_temp:
-                            max_temp = temp
-                            max_temp_entry_data = data
+                    if temp is not None and temp > max_temp:
+                        max_temp = temp
+                        max_temp_entry_data = data
                     #else:
                     #    _LOGGER.warning(f"[{self._name}] MATCH: Entry {entry_time_utc} (UTC) is in range, but 'air_temperature' is missing or None.")
                 #else:
@@ -399,7 +393,7 @@ class SmhiDailyForecastSensor(SmhiBaseSensor):
                 self._max_temp_data = {}
 
         except Exception as err:
-            #_LOGGER.warning(f"Error parsing daily forecast data for {self._name}: {err}", exc_info=True)
+            _LOGGER.error(f"Error parsing daily forecast data for {self._name}: {err}", exc_info=True)
             self._max_temp = None
             self._max_temp_data = {}
 
