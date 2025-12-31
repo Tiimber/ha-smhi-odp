@@ -84,11 +84,11 @@ class SmhiWeather(CoordinatorEntity, WeatherEntity):
             _LOGGER.warning("Weather: No data in first timeSeries entry")
             return None
             
-        symbol = time_series[0]["data"].get("weather_symbol")
-        _LOGGER.info(f"Weather: Got weather_symbol: {symbol}, available keys: {list(time_series[0]['data'].keys())}")
+        symbol = time_series[0]["data"].get("symbol_code")
+        _LOGGER.info(f"Weather: Got symbol_code: {symbol}, available keys: {list(time_series[0]['data'].keys())}")
         
         if symbol is None:
-            _LOGGER.warning("Weather: weather_symbol is None in API data")
+            _LOGGER.warning("Weather: symbol_code is None in API data")
             return None
         
         condition = next(
@@ -157,7 +157,7 @@ class SmhiWeather(CoordinatorEntity, WeatherEntity):
                 max_temp = self._get_daily_max_temp(time_series, entry_date)
                 min_temp = self._get_daily_min_temp(time_series, entry_date)
 
-                symbol = day_data.get("weather_symbol")
+                symbol = day_data.get("symbol_code")
                 condition = next(
                     (k for k, v in CONDITION_CLASSES.items() if symbol in v),
                     None,
@@ -220,7 +220,7 @@ class SmhiWeather(CoordinatorEntity, WeatherEntity):
                 max_temp = self._get_daily_max_temp(time_series, entry_date)
                 min_temp = self._get_daily_min_temp(time_series, entry_date) # Added min temp
 
-                symbol = day_data.get("weather_symbol")
+                symbol = day_data.get("symbol_code")
                 condition = next(
                     (k for k, v in CONDITION_CLASSES.items() if symbol in v),
                     None,
