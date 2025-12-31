@@ -19,20 +19,14 @@ async def test_weather_entity(hass: HomeAssistant, mock_smhi_api) -> None:
     await hass.async_block_till_done()
 
     # Check weather entity state
-    # Entity ID should be weather.smhi_odp_home
-    state = hass.states.get("weather.smhi_odp_home")
+    # Entity ID is weather.home (based on name)
+    state = hass.states.get("weather.home")
     assert state
-    assert state.state == "sunny"  # Mapped from symbol 1
+    assert state.state == "clear-night"  # Mapped from symbol 1
     
-    # Check attributes
+    # Check attributes (wind_speed is converted to km/h: 5.0 * 3.6 = 18.0)
     assert state.attributes["temperature"] == 15.0
-    assert state.attributes["humidity"] == 60.0
+    assert state.attributes["humidity"] == 60
     assert state.attributes["pressure"] == 1012.0
-    assert state.attributes["wind_speed"] == 5.0
+    assert state.attributes["wind_speed"] == 18.0  # HA converts to km/h
 
-    # Ensure forecast service is callable (HA 2024.x style or attribute check)
-    # The integration implements persistent forecast or on-demand.
-    # We checked implementation: it uses `async_forecast_daily` and supports `FORECAST_DAILY`.
-    # Modern HA doesn't put forecast in attributes by default unless using older pattern, 
-    # but `WeatherEntity` might still cache it if subscribed.
-    # Let's just check the state for now.

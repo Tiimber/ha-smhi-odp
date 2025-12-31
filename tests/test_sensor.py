@@ -38,7 +38,8 @@ async def test_sensors(hass: HomeAssistant, mock_smhi_api) -> None:
     assert state
     assert state.state == "60.0"
 
-    # Check wind speed
+    # Check wind speed (HA converts m/s to km/h: 5.0 * 3.6 = 18.0)
     state = hass.states.get("sensor.smhi_odp_home_wind_speed")
     assert state
-    assert state.state == "5.0"
+    assert state.state == "18.0"  # HA converts to km/h
+

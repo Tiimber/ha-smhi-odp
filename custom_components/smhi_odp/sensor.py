@@ -202,10 +202,7 @@ class SmhiWindDirectionSensor(SmhiBaseSensor):
         """Initialize the sensor."""
         super().__init__(coordinator, entry, "Wind Direction")
         self._attr_native_unit_of_measurement = DEGREE
-        self._attr_device_class = SensorDeviceClass.WIND_DIRECTION
-        # This line was removed, as device_class 'wind_direction'
-        # cannot have a state_class of 'measurement'.
-        # self._attr_state_class = SensorStateClass.MEASUREMENT
+        # Wind direction doesn't have a device_class in current HA versions
 
     @property
     def native_value(self):

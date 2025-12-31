@@ -5,7 +5,6 @@ import logging
 from homeassistant.components.weather import (
     WeatherEntity,
     WeatherEntityFeature,
-    ForecastV2Daily,
 )
 from homeassistant.const import (
     UnitOfLength,
@@ -116,7 +115,7 @@ class SmhiWeather(CoordinatorEntity, WeatherEntity):
             return self.coordinator.data["timeSeries"][0]["data"].get(key)
         return None
 
-    async def async_forecast_daily(self) -> list[ForecastV2Daily] | None:
+    async def async_forecast_daily(self) -> list[dict] | None:
         """Return the daily forecast in native units."""
         if not self.coordinator.data:
             return None
@@ -160,15 +159,15 @@ class SmhiWeather(CoordinatorEntity, WeatherEntity):
                 )
 
                 forecast_data.append(
-                    ForecastV2Daily(
-                        datetime=entry_date.isoformat(),
-                        native_temperature=max_temp,
-                        native_templow=min_temp,
-                        condition=condition,
-                        native_precipitation=day_data.get("precipitation_amount_mean", 0) * 24, # Rough daily estimate
-                        wind_bearing=day_data.get("wind_from_direction"),
-                        native_wind_speed=day_data.get("wind_speed"),
-                    )
+                    {
+                        "datetime": entry_date.isoformat(),
+                        "native_temperature": max_temp,
+                        "native_templow": min_temp,
+                        "condition": condition,
+                        "native_precipitation": day_data.get("precipitation_amount_mean", 0) * 24, # Rough daily estimate
+                        "wind_bearing": day_data.get("wind_from_direction"),
+                        "native_wind_speed": day_data.get("wind_speed"),
+                    }
                 )
                 processed_days.add(entry_date)
                 

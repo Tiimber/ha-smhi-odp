@@ -18,7 +18,7 @@ async def test_async_setup_entry(hass: HomeAssistant, mock_smhi_api) -> None:
     await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
-    assert entry.state == "loaded"
+    assert entry.state.name == "LOADED"  # Use name instead of string comparison
     assert "smhi_odp" in hass.data
     assert entry.entry_id in hass.data["smhi_odp"]
 
@@ -26,7 +26,7 @@ async def test_async_setup_entry(hass: HomeAssistant, mock_smhi_api) -> None:
     await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
     
-    assert entry.state == "not_loaded"
+    assert entry.state.name == "NOT_LOADED"  # Use name instead of string comparison
     # Ensure it's removed from data (except if integration leaves empty dict, but standard is to clean up)
     # Based on our __init__.py code: hass.data[DOMAIN].pop(entry.entry_id)
     assert entry.entry_id not in hass.data.get("smhi_odp", {})
