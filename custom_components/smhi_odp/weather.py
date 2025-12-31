@@ -1,4 +1,5 @@
 """Support for SMHI ODP weather service."""
+
 from datetime import datetime, timedelta
 import logging
 
@@ -25,15 +26,37 @@ _LOGGER = logging.getLogger(__name__)
 # SMHI Wsymb2 code mapping to HA conditions
 CONDITION_CLASSES = {
     "clear-night": [1],  # Clear sky
-    "sunny": [1, 2],     # Clear sky, Nearly clear sky
-    "partlycloudy": [3, 4], # Variable cloudiness, Halfclear sky
-    "cloudy": [5, 6],    # Cloudy sky, Overcast
-    "fog": [7],          # Fog
-    "rainy": [8, 9, 10, 18, 19, 20], # Light rain showers, Moderate rain showers, Heavy rain showers, Light rain, Moderate rain, Heavy rain
-    "lightning-rainy": [11, 21], # Thunderstorm, Thunder
-    "snowy-rainy": [12, 13, 14, 22, 23, 24], # Light sleet showers, Moderate sleet showers, Heavy sleet showers, Light sleet, Moderate sleet, Heavy sleet
-    "snowy": [15, 16, 17, 25, 26, 27], # Light snow showers, Moderate snow showers, Heavy snow showers, Light snowfall, Moderate snowfall, Heavy snowfall
+    "sunny": [1, 2],  # Clear sky, Nearly clear sky
+    "partlycloudy": [3, 4],  # Variable cloudiness, Halfclear sky
+    "cloudy": [5, 6],  # Cloudy sky, Overcast
+    "fog": [7],  # Fog
+    "rainy": [
+        8,
+        9,
+        10,
+        18,
+        19,
+        20,
+    ],  # Light rain showers, Moderate rain showers, Heavy rain showers, Light rain, Moderate rain, Heavy rain
+    "lightning-rainy": [11, 21],  # Thunderstorm, Thunder
+    "snowy-rainy": [
+        12,
+        13,
+        14,
+        22,
+        23,
+        24,
+    ],  # Light sleet showers, Moderate sleet showers, Heavy sleet showers, Light sleet, Moderate sleet, Heavy sleet
+    "snowy": [
+        15,
+        16,
+        17,
+        25,
+        26,
+        27,
+    ],  # Light snow showers, Moderate snow showers, Heavy snow showers, Light snowfall, Moderate snowfall, Heavy snowfall
 }
+
 
 async def async_setup_entry(
     hass: HomeAssistant, entry, async_add_entities: AddEntitiesCallback
@@ -73,24 +96,28 @@ class SmhiWeather(CoordinatorEntity, WeatherEntity):
         if not self.coordinator.data:
             _LOGGER.warning("Weather: No coordinator data available")
             return None
-            
+
         # Get the symbol from the first time series entry
         time_series = self.coordinator.data.get("timeSeries")
         if not time_series:
             _LOGGER.warning("Weather: No timeSeries in coordinator data")
             return None
-        
+
         if not time_series[0].get("data"):
             _LOGGER.warning("Weather: No data in first timeSeries entry")
             return None
-            
-        symbol = time_series[0]["data"].get("symbol_code")
-        _LOGGER.info(f"Weather: Got symbol_code: {symbol}, available keys: {list(time_series[0]['data'].keys())}")
-        
+
+        symbol = self._get_symbol(time_series[0]["data"])
+        _LOGGER.info(
+            "Weather: Got symbol: %s, available keys: %s",
+            symbol,
+            list(time_series[0]["data"].keys()),
+        )
+
         if symbol is None:
-            _LOGGER.warning("Weather: symbol_code is None in API data")
+            _LOGGER.warning("Weather: symbol is None in API data")
             return None
-        
+
         condition = next(
             (k for k, v in CONDITION_CLASSES.items() if symbol in v),
             None,
@@ -124,6 +151,43 @@ class SmhiWeather(CoordinatorEntity, WeatherEntity):
         return self._get_current_data("wind_from_direction")
 
     @property
+    def extra_state_attributes(self) -> dict:
+        """Return extra attributes.
+
+        Many custom Lovelace cards still expect a `forecast` state attribute.
+        Home Assistant itself prefers `weather.get_forecasts`, but exposing a
+        small (<=10 days) forecast attribute keeps dashboards compatible.
+        """
+        forecast = self.forecast
+        if not forecast:
+            return {}
+        return {"forecast": forecast}
+
+    @staticmethod
+    def _get_entry_time(entry: dict) -> datetime | None:
+        """Parse the timestamp for a time series entry."""
+        time_str = entry.get("time") or entry.get("validTime")
+        if not time_str:
+            return None
+        return dt_util.parse_datetime(time_str)
+
+    @staticmethod
+    def _get_symbol(day_data: dict) -> int | None:
+        """Get the SMHI symbol code from a data dict.
+
+        Different SMHI endpoints / versions may use different keys.
+        """
+        symbol = day_data.get("symbol_code")
+        if symbol is None:
+            symbol = day_data.get("weather_symbol")
+        if symbol is None:
+            symbol = day_data.get("Wsymb2")
+        try:
+            return int(symbol) if symbol is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    @property
     def forecast(self) -> list[dict] | None:
         """Return the forecast array for dashboard cards compatibility."""
         if not self.coordinator.data:
@@ -135,43 +199,46 @@ class SmhiWeather(CoordinatorEntity, WeatherEntity):
 
         forecast_data = []
         processed_days = set()
-        
+
         now = dt_util.now()
         today = now.date()
 
         for entry in time_series:
-            entry_time = dt_util.parse_datetime(entry["time"])
+            entry_time = self._get_entry_time(entry)
             if not entry_time:
                 continue
-                
+
             entry_local = dt_util.as_local(entry_time)
             entry_date = entry_local.date()
-            
+
             if entry_date < today:
                 continue
 
             if entry_date not in processed_days:
                 noon_entry = self._find_noon_entry(time_series, entry_date)
                 day_data = noon_entry["data"] if noon_entry else entry["data"]
-                
+
                 max_temp = self._get_daily_max_temp(time_series, entry_date)
                 min_temp = self._get_daily_min_temp(time_series, entry_date)
 
-                symbol = day_data.get("symbol_code")
+                symbol = self._get_symbol(day_data)
                 condition = next(
                     (k for k, v in CONDITION_CLASSES.items() if symbol in v),
                     None,
                 )
 
-                forecast_data.append({
-                    "datetime": entry_date.isoformat(),
-                    "temperature": max_temp,
-                    "templow": min_temp,
-                    "condition": condition,
-                    "precipitation": day_data.get("precipitation_amount_mean", 0) * 24,
-                })
+                forecast_data.append(
+                    {
+                        "datetime": entry_date.isoformat(),
+                        "temperature": max_temp,
+                        "templow": min_temp,
+                        "condition": condition,
+                        "precipitation": day_data.get("precipitation_amount_mean", 0)
+                        * 24,
+                    }
+                )
                 processed_days.add(entry_date)
-                
+
                 if len(forecast_data) >= 10:
                     break
 
@@ -194,17 +261,18 @@ class SmhiWeather(CoordinatorEntity, WeatherEntity):
 
         forecast_data = []
         processed_days = set()
-        
+
         now = dt_util.now()
         today = now.date()
 
         for entry in time_series:
-            entry_time = dt_util.parse_datetime(entry["time"])
+            entry_time = self._get_entry_time(entry)
             if not entry_time:
                 continue
-                
-            entry_date = entry_time.date()
-            
+
+            entry_local = dt_util.as_local(entry_time)
+            entry_date = entry_local.date()
+
             # Skip past data, but include today
             if entry_date < today:
                 continue
@@ -215,12 +283,14 @@ class SmhiWeather(CoordinatorEntity, WeatherEntity):
                 # Find noon entry for symbol, fallback to current entry
                 noon_entry = self._find_noon_entry(time_series, entry_date)
                 day_data = noon_entry["data"] if noon_entry else entry["data"]
-                
+
                 # Find max temp for the day
                 max_temp = self._get_daily_max_temp(time_series, entry_date)
-                min_temp = self._get_daily_min_temp(time_series, entry_date) # Added min temp
+                min_temp = self._get_daily_min_temp(
+                    time_series, entry_date
+                )  # Added min temp
 
-                symbol = day_data.get("symbol_code")
+                symbol = self._get_symbol(day_data)
                 condition = next(
                     (k for k, v in CONDITION_CLASSES.items() if symbol in v),
                     None,
@@ -232,13 +302,16 @@ class SmhiWeather(CoordinatorEntity, WeatherEntity):
                         "native_temperature": max_temp,
                         "native_templow": min_temp,
                         "condition": condition,
-                        "native_precipitation": day_data.get("precipitation_amount_mean", 0) * 24, # Rough daily estimate
+                        "native_precipitation": day_data.get(
+                            "precipitation_amount_mean", 0
+                        )
+                        * 24,  # Rough daily estimate
                         "wind_bearing": day_data.get("wind_from_direction"),
                         "native_wind_speed": day_data.get("wind_speed"),
                     }
                 )
                 processed_days.add(entry_date)
-                
+
                 # Limit to 10 days
                 if len(forecast_data) >= 10:
                     break
@@ -247,20 +320,25 @@ class SmhiWeather(CoordinatorEntity, WeatherEntity):
 
     def _find_noon_entry(self, time_series, date):
         """Find the entry closest to 12:00 for a given date."""
-        target_time = datetime.combine(date, datetime.min.time().replace(hour=12)).replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
-        
+        target_time = datetime.combine(
+            date, datetime.min.time().replace(hour=12)
+        ).replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
+
         best_entry = None
         min_diff = float("inf")
 
         for entry in time_series:
-            entry_time = dt_util.parse_datetime(entry["time"])
-            if entry_time.date() == date:
-                # Naive comparison is okay here as both should be valid
-                diff = abs((entry_time - target_time).total_seconds())
+            entry_time = self._get_entry_time(entry)
+            if not entry_time:
+                continue
+
+            entry_local = dt_util.as_local(entry_time)
+            if entry_local.date() == date:
+                diff = abs((entry_local - target_time).total_seconds())
                 if diff < min_diff:
                     min_diff = diff
                     best_entry = entry
-        
+
         return best_entry
 
     def _get_daily_max_temp(self, time_series, date):
@@ -268,8 +346,12 @@ class SmhiWeather(CoordinatorEntity, WeatherEntity):
         max_temp = -float("inf")
         found = False
         for entry in time_series:
-            entry_time = dt_util.parse_datetime(entry["time"])
-            if entry_time.date() == date:
+            entry_time = self._get_entry_time(entry)
+            if not entry_time:
+                continue
+
+            entry_local = dt_util.as_local(entry_time)
+            if entry_local.date() == date:
                 temp = entry["data"].get("air_temperature")
                 if temp is not None:
                     if temp > max_temp:
@@ -282,8 +364,12 @@ class SmhiWeather(CoordinatorEntity, WeatherEntity):
         min_temp = float("inf")
         found = False
         for entry in time_series:
-            entry_time = dt_util.parse_datetime(entry["time"])
-            if entry_time.date() == date:
+            entry_time = self._get_entry_time(entry)
+            if not entry_time:
+                continue
+
+            entry_local = dt_util.as_local(entry_time)
+            if entry_local.date() == date:
                 temp = entry["data"].get("air_temperature")
                 if temp is not None:
                     if temp < min_temp:
