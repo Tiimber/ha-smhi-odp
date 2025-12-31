@@ -4,7 +4,19 @@
 
 Get comprehensive weather data from SMHI (Sveriges meteorologiska och hydrologiska institut) directly in Home Assistant. This custom integration uses the Open Data API to provide accurate current conditions and 10-day forecasts for any location in Sweden.
 
-![SMHI Sensor Mockup](assets/images/smhi_sensor_mockup.png)
+## Sample dashboard cards
+
+### Standard
+
+[![Standard dashboard preview](assets/images/dashboard_standard_small.png)](assets/images/dashboard_standard_full.png)
+
+[Dashboard YAML](assets/dashboard_samples/dashboard_standard.yaml)
+
+### Glassmorphism
+
+[![Glassmorphism dashboard preview](assets/images/dashboard_glassmorphism_small.png)](assets/images/dashboard_glassmorphism_full.png)
+
+[Dashboard YAML](assets/dashboard_samples/dashboard_glassmorphism.yaml)
 
 ## Features
 

@@ -1,0 +1,156 @@
+# SMHI ODP Dashboard - Glassmorphism Style
+# Prerequisites: Install via HACS:
+#   - Button Card (custom:button-card)
+#   - Card Mod (optional, for transparency effects)
+#
+# Replace 'weather.home' with your actual weather entity ID
+
+type: custom:button-card
+entity: weather.home
+show_icon: false
+show_name: false
+show_state: false
+styles:
+  card:
+    - background: rgba(28, 28, 28, 0.8)
+    - backdrop-filter: blur(10px)
+    - border-radius: 20px
+    - padding: 20px
+    - border: 1px solid rgba(255,255,255,0.1)
+  grid:
+    - grid-template-areas: '"header header" "attrs attrs" "forecast forecast"'
+    - grid-template-columns: 1fr 1fr
+    - grid-template-rows: min-content min-content min-content
+    - row-gap: 10px
+  custom_fields:
+    header:
+      - padding-bottom: 2px
+    attrs:
+      - padding-top: 10px
+    forecast:
+      - padding-top: 12px
+custom_fields:
+  header: >
+    [[[
+      const state = entity.state;
+
+      const conditionLabels = {
+        'clear-night': 'Clear night',
+        'cloudy': 'Cloudy',
+        'exceptional': 'Exceptional',
+        'fog': 'Fog',
+        'hail': 'Hail',
+        'lightning': 'Lightning',
+        'lightning-rainy': 'Thunderstorms',
+        'partlycloudy': 'Partly cloudy',
+        'pouring': 'Pouring',
+        'rainy': 'Rain',
+        'snowy': 'Snow',
+        'snowy-rainy': 'Sleet',
+        'sunny': 'Sunny',
+        'windy': 'Windy',
+        'windy-variant': 'Windy',
+      };
+
+      const conditionIcon = (() => {
+        if (state == 'sunny') return 'mdi:weather-sunny';
+        if (state == 'partlycloudy') return 'mdi:weather-partly-cloudy';
+        if (state == 'cloudy') return 'mdi:weather-cloudy';
+        if (state == 'rainy') return 'mdi:weather-rainy';
+        if (state == 'snowy') return 'mdi:weather-snowy';
+        if (state == 'clear-night') return 'mdi:weather-night';
+        if (state == 'fog') return 'mdi:weather-fog';
+        if (state == 'lightning-rainy') return 'mdi:weather-lightning-rainy';
+        if (state == 'snowy-rainy') return 'mdi:weather-snowy-rainy';
+        if (state == 'pouring') return 'mdi:weather-pouring';
+        return 'mdi:weather-cloudy';
+      })();
+
+      const name = entity.attributes.friendly_name || 'Weather';
+      const condition = conditionLabels[state] || (state ? state.replace(/-/g, ' ') : '');
+
+      const t = entity.attributes.temperature;
+      const temp = (t === undefined || t === null) ? '—' : Math.round(t);
+
+      return `
+        <div style="display: flex; align-items: stretch; justify-content: space-between; gap: 12px; padding: 14px; border-radius: 18px; background: rgba(50, 50, 50, 0.5); border: 1px solid rgba(255,255,255,0.08);">
+          <div style="min-width: 0;">
+            <div style="font-size: 1.2rem; color: rgba(255,255,255,0.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${name}</div>
+            <div style="margin-top: 6px; font-size: 0.95rem; opacity: 0.75; color: rgba(255,255,255,0.85); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${condition}</div>
+            <div style="margin-top: 10px; font-size: 4rem; font-weight: bold; line-height: 1; color: rgba(255,255,255,0.9);">${temp}°</div>
+          </div>
+
+          <div style="display: flex; align-items: flex-start; justify-content: flex-end;">
+            <ha-icon icon="${conditionIcon}" style="width: 80px; height: 80px; --mdc-icon-size: 80px; color: var(--paper-item-icon-active-color);"></ha-icon>
+          </div>
+        </div>
+      `;
+    ]]]
+  attrs: >
+    [[[
+      const humidity = entity.attributes.humidity;
+      const wind = entity.attributes.wind_speed;
+      const pressure = entity.attributes.pressure;
+
+      const boxStyle = 'flex: 1 1 0; min-width: 0; background: rgba(50, 50, 50, 0.5); border-radius: 15px; padding: 10px; border: 1px solid rgba(255,255,255,0.08);';
+      const nameStyle = 'font-size: 0.8rem; opacity: 0.7; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
+      const valueStyle = 'font-size: 1.1rem; font-weight: bold; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
+
+      return `
+        <div style="display: flex; gap: 10px;">
+          <div style="${boxStyle}">
+            <ha-icon icon="mdi:water-percent" style="width: 24px; --mdc-icon-size: 24px; color: #41BDF5;"></ha-icon>
+            <div style="${nameStyle}">Humidity</div>
+            <div style="${valueStyle}">${humidity ?? '—'} %</div>
+          </div>
+          <div style="${boxStyle}">
+            <ha-icon icon="mdi:weather-windy" style="width: 24px; --mdc-icon-size: 24px;"></ha-icon>
+            <div style="${nameStyle}">Wind</div>
+            <div style="${valueStyle}">${wind ?? '—'} km/h</div>
+          </div>
+          <div style="${boxStyle}">
+            <ha-icon icon="mdi:gauge" style="width: 24px; --mdc-icon-size: 24px;"></ha-icon>
+            <div style="${nameStyle}">Pressure</div>
+            <div style="${valueStyle}">${pressure ?? '—'} hPa</div>
+          </div>
+        </div>
+      `;
+    ]]]
+  forecast: >
+    [[[
+      var forecast = entity.attributes.forecast;
+      if (!forecast) {
+        return '<div style="color: rgba(255,255,255,0.85); padding: 4px 2px;">Forecast data unavailable</div>';
+      }
+
+      var html = '<div style="display: flex; gap: 12px; overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; padding: 4px 2px;">';
+
+      for (var i = 0; i < Math.min(forecast.length, 10); i++) {
+        var day = forecast[i];
+        var date = new Date(day.datetime);
+        var dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+        if (i == 0) dayName = 'Today';
+        if (i == 1) dayName = 'Tomorrow';
+
+        var icon = 'mdi:weather-cloudy';
+        if (day.condition == 'sunny') icon = 'mdi:weather-sunny';
+        if (day.condition == 'partlycloudy') icon = 'mdi:weather-partly-cloudy';
+        if (day.condition == 'cloudy') icon = 'mdi:weather-cloudy';
+        if (day.condition == 'rainy') icon = 'mdi:weather-rainy';
+        if (day.condition == 'snowy') icon = 'mdi:weather-snowy';
+        if (day.condition == 'clear-night') icon = 'mdi:weather-night';
+
+        var temp = day.temperature || day.native_temperature || '—';
+
+        html += `
+          <div style="flex: 0 0 auto; width: 76px; padding: 10px 8px; border-radius: 14px; background: rgba(50, 50, 50, 0.5); border: 1px solid rgba(255,255,255,0.08); text-align: center;">
+            <div style="font-size: 0.85rem; opacity: 0.8; margin-bottom: 6px; white-space: nowrap;">${dayName}</div>
+            <ha-icon icon="${icon}" style="width: 24px; --mdc-icon-size: 24px;"></ha-icon>
+            <div style="margin-top: 6px; font-size: 1.05rem; font-weight: bold; white-space: nowrap;">${temp}°</div>
+          </div>
+        `;
+      }
+
+      html += '</div>';
+      return html;
+    ]]]
