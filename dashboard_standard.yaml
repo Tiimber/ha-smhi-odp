@@ -1,0 +1,11 @@
+# SMHI ODP Dashboard - Standard Weather Card
+# No custom cards required - uses built-in Home Assistant weather card
+#
+# Replace 'weather.home' with your actual weather entity ID
+
+type: weather-forecast
+entity: weather.home
+show_current: true
+show_forecast: true
+forecast_type: daily
+secondary_info_attribute: wind_speed
