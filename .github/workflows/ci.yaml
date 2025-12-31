@@ -28,4 +28,4 @@ jobs:
           # Install integration requirements if any (none in manifest atm)
 
       - name: Run tests
-        run: pytest
+        run: PYTHONPATH=. pytest
