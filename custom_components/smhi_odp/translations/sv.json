@@ -1,19 +1,22 @@
 {
-    "step": {
-        "user": {
-            "title": "SMHI ODP",
-            "description": "Välj ett namn och en plats för väderprognosen.",
-            "data": {
-                "name": "Namn",
-                "location": "Plats"
+    "title": "SMHI ODP",
+    "config": {
+        "step": {
+            "user": {
+                "title": "SMHI ODP",
+                "description": "Välj ett namn och en plats för väderprognosen.",
+                "data": {
+                    "name": "Namn",
+                    "location": "Plats"
+                }
             }
+        },
+        "error": {
+            "cannot_connect": "Misslyckades med att ansluta till API:et. Kontrollera din anslutning.",
+            "unknown": "Ett okänt fel inträffade."
+        },
+        "abort": {
+            "already_configured": "Denna plats är redan konfigurerad."
         }
-    },
-    "errors": {
-        "cannot_connect": "Misslyckades med att ansluta till API:et. Kontrollera din anslutning.",
-        "unknown": "Ett okänt fel inträffade."
-    },
-    "abort": {
-        "already_configured": "Denna plats är redan konfigurerad."
     }
 }
