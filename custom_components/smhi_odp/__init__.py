@@ -2,10 +2,11 @@
 import logging
 from datetime import timedelta
 import httpx
+import voluptuous as vol
 
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers import httpx_client
+from homeassistant.helpers import httpx_client, config_validation as cv
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.const import (
     CONF_LATITUDE,
@@ -16,8 +17,14 @@ from homeassistant.const import (
 
 # This import must match your folder name and const.py
 from .const import DOMAIN
+from .display_service import WeatherDisplayService
 
 _LOGGER = logging.getLogger(__name__)
+
+# Service schema
+SERVICE_SCHEMA = vol.Schema({
+    vol.Optional("entry_id"): cv.string,
+})
 
 # Define the platform you want to load (sensor)
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.WEATHER]
@@ -85,6 +92,64 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
+    # Create display service if not already created
+    if "display_service" not in hass.data[DOMAIN]:
+        hass.data[DOMAIN]["display_service"] = WeatherDisplayService()
+
+    # Register services (only once for the domain)
+    if not hass.services.has_service(DOMAIN, "generate_today_gif"):
+        async def handle_generate_today_gif(call: ServiceCall):
+            """Handle the generate_today_gif service call."""
+            entry_id = call.data.get("entry_id", entry.entry_id)
+            coord = hass.data[DOMAIN].get(entry_id)
+            if not coord:
+                _LOGGER.error(f"No coordinator found for entry_id: {entry_id}")
+                return
+            
+            display_service = hass.data[DOMAIN]["display_service"]
+            gif_bytes = await display_service.generate_today_gif(coord, entry)
+            
+            _LOGGER.info(f"Generated Today GIF: {len(gif_bytes)} bytes")
+            return {"gif_bytes": gif_bytes.hex(), "size": len(gif_bytes)}
+
+        async def handle_generate_tomorrow_gif(call: ServiceCall):
+            """Handle the generate_tomorrow_gif service call."""
+            entry_id = call.data.get("entry_id", entry.entry_id)
+            coord = hass.data[DOMAIN].get(entry_id)
+            if not coord:
+                _LOGGER.error(f"No coordinator found for entry_id: {entry_id}")
+                return
+            
+            display_service = hass.data[DOMAIN]["display_service"]
+            gif_bytes = await display_service.generate_tomorrow_gif(coord, entry)
+            
+            _LOGGER.info(f"Generated Tomorrow GIF: {len(gif_bytes)} bytes")
+            return {"gif_bytes": gif_bytes.hex(), "size": len(gif_bytes)}
+
+        async def handle_generate_week_gif(call: ServiceCall):
+            """Handle the generate_week_gif service call."""
+            entry_id = call.data.get("entry_id", entry.entry_id)
+            coord = hass.data[DOMAIN].get(entry_id)
+            if not coord:
+                _LOGGER.error(f"No coordinator found for entry_id: {entry_id}")
+                return
+            
+            display_service = hass.data[DOMAIN]["display_service"]
+            gif_bytes = await display_service.generate_week_gif(coord, entry)
+            
+            _LOGGER.info(f"Generated Week GIF: {len(gif_bytes)} bytes")
+            return {"gif_bytes": gif_bytes.hex(), "size": len(gif_bytes)}
+
+        hass.services.async_register(
+            DOMAIN, "generate_today_gif", handle_generate_today_gif, schema=SERVICE_SCHEMA
+        )
+        hass.services.async_register(
+            DOMAIN, "generate_tomorrow_gif", handle_generate_tomorrow_gif, schema=SERVICE_SCHEMA
+        )
+        hass.services.async_register(
+            DOMAIN, "generate_week_gif", handle_generate_week_gif, schema=SERVICE_SCHEMA
+        )
+
     # Forward the setup to the sensor platform
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     
@@ -101,5 +166,19 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Remove the coordinator from hass.data
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
+        
+        # If no more entries, unregister services and cleanup
+        remaining_entries = [
+            e for e in hass.config_entries.async_entries(DOMAIN)
+            if e.entry_id != entry.entry_id
+        ]
+        
+        if not remaining_entries:
+            hass.services.async_remove(DOMAIN, "generate_today_gif")
+            hass.services.async_remove(DOMAIN, "generate_tomorrow_gif")
+            hass.services.async_remove(DOMAIN, "generate_week_gif")
+            
+            if "display_service" in hass.data[DOMAIN]:
+                hass.data[DOMAIN].pop("display_service")
 
     return unload_ok

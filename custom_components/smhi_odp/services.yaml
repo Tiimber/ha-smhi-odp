@@ -1,0 +1,35 @@
+generate_today_gif:
+  name: Generate Today GIF
+  description: Generate an animated GIF showing hourly weather forecast for today (hours 05-22).
+  fields:
+    entry_id:
+      name: Entry ID
+      description: The config entry ID (optional, uses default if not specified).
+      required: false
+      example: "abc123def456"
+      selector:
+        text:
+
+generate_tomorrow_gif:
+  name: Generate Tomorrow GIF
+  description: Generate an animated GIF showing weather forecast for tomorrow in time blocks (morning, afternoon, evening).
+  fields:
+    entry_id:
+      name: Entry ID
+      description: The config entry ID (optional, uses default if not specified).
+      required: false
+      example: "abc123def456"
+      selector:
+        text:
+
+generate_week_gif:
+  name: Generate Week GIF
+  description: Generate an animated GIF showing daily weather forecast for the upcoming week (days +2 to +9).
+  fields:
+    entry_id:
+      name: Entry ID
+      description: The config entry ID (optional, uses default if not specified).
+      required: false
+      example: "abc123def456"
+      selector:
+        text:
