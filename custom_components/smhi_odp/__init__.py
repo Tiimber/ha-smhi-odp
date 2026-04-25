@@ -104,13 +104,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             coord = hass.data[DOMAIN].get(entry_id)
             if not coord:
                 _LOGGER.error(f"No coordinator found for entry_id: {entry_id}")
-                return
+                return {"success": False, "error": "No coordinator found"}
             
             display_service = hass.data[DOMAIN]["display_service"]
             gif_bytes = await display_service.generate_today_gif(coord, entry)
             
-            _LOGGER.info(f"Generated Today GIF: {len(gif_bytes)} bytes")
-            return {"gif_bytes": gif_bytes.hex(), "size": len(gif_bytes)}
+            # Save directly to /config/www/
+            filename = "weather_today.gif"
+            filepath = hass.config.path("www", filename)
+            
+            def write_file():
+                with open(filepath, 'wb') as f:
+                    f.write(gif_bytes)
+            
+            await hass.async_add_executor_job(write_file)
+            _LOGGER.info(f"Saved {filename}: {len(gif_bytes)} bytes")
+            return {"success": True, "filename": filename, "size": len(gif_bytes)}
 
         async def handle_generate_tomorrow_gif(call: ServiceCall):
             """Handle the generate_tomorrow_gif service call."""
@@ -118,13 +127,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             coord = hass.data[DOMAIN].get(entry_id)
             if not coord:
                 _LOGGER.error(f"No coordinator found for entry_id: {entry_id}")
-                return
+                return {"success": False, "error": "No coordinator found"}
             
             display_service = hass.data[DOMAIN]["display_service"]
             gif_bytes = await display_service.generate_tomorrow_gif(coord, entry)
             
-            _LOGGER.info(f"Generated Tomorrow GIF: {len(gif_bytes)} bytes")
-            return {"gif_bytes": gif_bytes.hex(), "size": len(gif_bytes)}
+            # Save directly to /config/www/
+            filename = "weather_tomorrow.gif"
+            filepath = hass.config.path("www", filename)
+            
+            def write_file():
+                with open(filepath, 'wb') as f:
+                    f.write(gif_bytes)
+            
+            await hass.async_add_executor_job(write_file)
+            _LOGGER.info(f"Saved {filename}: {len(gif_bytes)} bytes")
+            return {"success": True, "filename": filename, "size": len(gif_bytes)}
 
         async def handle_generate_week_gif(call: ServiceCall):
             """Handle the generate_week_gif service call."""
@@ -132,13 +150,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             coord = hass.data[DOMAIN].get(entry_id)
             if not coord:
                 _LOGGER.error(f"No coordinator found for entry_id: {entry_id}")
-                return
+                return {"success": False, "error": "No coordinator found"}
             
             display_service = hass.data[DOMAIN]["display_service"]
             gif_bytes = await display_service.generate_week_gif(coord, entry)
             
-            _LOGGER.info(f"Generated Week GIF: {len(gif_bytes)} bytes")
-            return {"gif_bytes": gif_bytes.hex(), "size": len(gif_bytes)}
+            # Save directly to /config/www/
+            filename = "weather_week.gif"
+            filepath = hass.config.path("www", filename)
+            
+            def write_file():
+                with open(filepath, 'wb') as f:
+                    f.write(gif_bytes)
+            
+            await hass.async_add_executor_job(write_file)
+            _LOGGER.info(f"Saved {filename}: {len(gif_bytes)} bytes")
+            return {"success": True, "filename": filename, "size": len(gif_bytes)}
 
         hass.services.async_register(
             DOMAIN, 
