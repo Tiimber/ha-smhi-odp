@@ -141,13 +141,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             return {"gif_bytes": gif_bytes.hex(), "size": len(gif_bytes)}
 
         hass.services.async_register(
-            DOMAIN, "generate_today_gif", handle_generate_today_gif, schema=SERVICE_SCHEMA
+            DOMAIN, 
+            "generate_today_gif", 
+            handle_generate_today_gif, 
+            schema=SERVICE_SCHEMA,
+            supports_response="optional"
         )
         hass.services.async_register(
-            DOMAIN, "generate_tomorrow_gif", handle_generate_tomorrow_gif, schema=SERVICE_SCHEMA
+            DOMAIN, 
+            "generate_tomorrow_gif", 
+            handle_generate_tomorrow_gif, 
+            schema=SERVICE_SCHEMA,
+            supports_response="optional"
         )
         hass.services.async_register(
-            DOMAIN, "generate_week_gif", handle_generate_week_gif, schema=SERVICE_SCHEMA
+            DOMAIN, 
+            "generate_week_gif", 
+            handle_generate_week_gif, 
+            schema=SERVICE_SCHEMA,
+            supports_response="optional"
         )
 
     # Forward the setup to the sensor platform

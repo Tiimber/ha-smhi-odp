@@ -9,6 +9,13 @@ generate_today_gif:
       example: "abc123def456"
       selector:
         text:
+  response:
+    gif_bytes:
+      description: Hex-encoded GIF image data.
+      example: "474946383961..."
+    size:
+      description: Size of the GIF in bytes.
+      example: 45000
 
 generate_tomorrow_gif:
   name: Generate Tomorrow GIF
@@ -21,6 +28,13 @@ generate_tomorrow_gif:
       example: "abc123def456"
       selector:
         text:
+  response:
+    gif_bytes:
+      description: Hex-encoded GIF image data.
+      example: "474946383961..."
+    size:
+      description: Size of the GIF in bytes.
+      example: 45000
 
 generate_week_gif:
   name: Generate Week GIF
@@ -33,3 +47,10 @@ generate_week_gif:
       example: "abc123def456"
       selector:
         text:
+  response:
+    gif_bytes:
+      description: Hex-encoded GIF image data.
+      example: "474946383961..."
+    size:
+      description: Size of the GIF in bytes.
+      example: 45000
