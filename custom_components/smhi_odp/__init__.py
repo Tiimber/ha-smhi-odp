@@ -4,7 +4,7 @@ from datetime import timedelta
 import httpx
 import voluptuous as vol
 
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers import httpx_client, config_validation as cv
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -145,21 +145,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "generate_today_gif", 
             handle_generate_today_gif, 
             schema=SERVICE_SCHEMA,
-            supports_response="optional"
+            supports_response=SupportsResponse.OPTIONAL
         )
         hass.services.async_register(
             DOMAIN, 
             "generate_tomorrow_gif", 
             handle_generate_tomorrow_gif, 
             schema=SERVICE_SCHEMA,
-            supports_response="optional"
+            supports_response=SupportsResponse.OPTIONAL
         )
         hass.services.async_register(
             DOMAIN, 
             "generate_week_gif", 
             handle_generate_week_gif, 
             schema=SERVICE_SCHEMA,
-            supports_response="optional"
+            supports_response=SupportsResponse.OPTIONAL
         )
 
     # Forward the setup to the sensor platform
