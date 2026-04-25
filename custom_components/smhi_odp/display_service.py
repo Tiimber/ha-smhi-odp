@@ -200,7 +200,7 @@ class WeatherDisplayService:
                     hourly_data.append({
                         "hour": hour,
                         "time": entry_time_local,
-                        "data": entry_data.get("parameters", [])
+                        "data": entry_data.get("data") or entry_data.get("parameters", [])
                     })
         
         if not hourly_data:
@@ -253,10 +253,10 @@ class WeatherDisplayService:
             data_params = hour_info["data"]
             
             # Extract data
-            temp = self._get_parameter(data_params, "t", "air_temperature")
-            precip = self._get_parameter(data_params, "pmedian", "precipitation_amount_mean")
-            symbol = self._get_parameter(data_params, "Wsymb2", "weather_symbol")
-            wind_speed = self._get_parameter(data_params, "ws", "wind_speed")
+            temp = self._get_parameter(data_params, "air_temperature", "t")
+            precip = self._get_parameter(data_params, "precipitation_amount_median", "pmedian")
+            symbol = self._get_parameter(data_params, "symbol_code", "Wsymb2")
+            wind_speed = self._get_parameter(data_params, "wind_speed", "ws")
             
             # Draw icon
             if symbol:
@@ -295,7 +295,22 @@ class WeatherDisplayService:
         return frames
 
     def _get_parameter(self, parameters, name, fallback_name=None):
-        """Extract parameter value from SMHI data."""
+        """Extract parameter value from SMHI data.
+        
+        Supports both formats:
+        - Array format: [{"name": "t", "values": [10.5]}]
+        - Object format: {"air_temperature": 10.5}
+        """
+        # Check if it's an object (dict) - snow1g API format
+        if isinstance(parameters, dict):
+            # Try primary name first, then fallback
+            if name in parameters:
+                return parameters[name]
+            if fallback_name and fallback_name in parameters:
+                return parameters[fallback_name]
+            return None
+        
+        # Otherwise assume it's an array - old format
         for param in parameters:
             if param.get("name") == name or (fallback_name and param.get("name") == fallback_name):
                 values = param.get("values")
@@ -346,7 +361,7 @@ class WeatherDisplayService:
             if entry_time_local.date() == tomorrow_date:
                 tomorrow_data.append({
                     "hour": entry_time_local.hour,
-                    "data": entry_data.get("parameters", [])
+                    "data": entry_data.get("data") or entry_data.get("parameters", [])
                 })
         
         if not tomorrow_data:
@@ -368,6 +383,8 @@ class WeatherDisplayService:
 
     def _aggregate_time_blocks(self, hourly_data):
         """Aggregate hourly data into morning/afternoon/evening blocks."""
+        _LOGGER.info(f"Aggregating {len(hourly_data)} hours of data")
+        
         blocks = {
             "MORN": {"hours": [], "max_temp": -999, "total_precip": 0, "symbols": []},
             "AFT": {"hours": [], "max_temp": -999, "total_precip": 0, "symbols": []},
@@ -377,6 +394,8 @@ class WeatherDisplayService:
         for hour_data in hourly_data:
             hour = hour_data["hour"]
             params = hour_data["data"]
+            
+            _LOGGER.debug(f"Hour {hour}: {len(params)} parameters")
             
             # Determine block
             if 5 <= hour < 12:
@@ -389,9 +408,11 @@ class WeatherDisplayService:
                 continue  # Skip night hours
             
             # Extract values
-            temp = self._get_parameter(params, "t", "air_temperature")
-            precip = self._get_parameter(params, "pmedian", "precipitation_amount_mean")
-            symbol = self._get_parameter(params, "Wsymb2", "weather_symbol")
+            temp = self._get_parameter(params, "air_temperature", "t")
+            precip = self._get_parameter(params, "precipitation_amount_median", "pmedian")
+            symbol = self._get_parameter(params, "symbol_code", "Wsymb2")
+            
+            _LOGGER.debug(f"Hour {hour} ({block_key}): temp={temp}, precip={precip}, symbol={symbol}")
             
             if temp is not None:
                 blocks[block_key]["max_temp"] = max(blocks[block_key]["max_temp"], temp)
@@ -404,6 +425,8 @@ class WeatherDisplayService:
         for block in blocks.values():
             if block["symbols"]:
                 block["symbol"] = self._get_most_severe_symbol(block["symbols"])
+        
+        _LOGGER.info(f"Aggregated blocks: MORN={blocks['MORN']['max_temp']}, AFT={blocks['AFT']['max_temp']}, EVE={blocks['EVE']['max_temp']}")
         
         return blocks
 
@@ -449,18 +472,22 @@ class WeatherDisplayService:
         
         x_pos = title_width
         for block_name, block_data in [("MORN", blocks["MORN"]), ("AFT", blocks["AFT"]), ("EVE", blocks["EVE"])]:
+            _LOGGER.info(f"Drawing block {block_name}: max_temp={block_data.get('max_temp')}, symbol={block_data.get('symbol')}, precip={block_data.get('total_precip')}")
+            
             if block_data["max_temp"] == -999:
                 continue  # No data for this block
             
             # Draw icon
-            if "symbol" in block_data:
+            if "symbol" in block_data and block_data["symbol"] is not None:
                 icon_pixels = get_icon_pixels(block_data["symbol"])
+                _LOGGER.info(f"Drawing icon for symbol {block_data['symbol']} at x={x_pos}")
                 self._draw_icon(draw, wide_canvas, x_pos, 0, icon_pixels)
             
             # Draw temperature
             temp = block_data["max_temp"]
             temp_color = self._get_temp_color(temp)
             temp_text = f"{int(temp)}"
+            _LOGGER.info(f"Drawing temperature {temp_text} at x={x_pos + 9}")
             self._draw_text_3x5(draw, wide_canvas, x_pos + 9, 0, temp_text, temp_color)
             
             # Draw precipitation if > 0
@@ -527,10 +554,10 @@ class WeatherDisplayService:
                         "symbols": []
                     }
                 
-                params = entry_data.get("parameters", [])
-                temp = self._get_parameter(params, "t", "air_temperature")
-                precip = self._get_parameter(params, "pmedian", "precipitation_amount_mean")
-                symbol = self._get_parameter(params, "Wsymb2", "weather_symbol")
+                params = entry_data.get("data") or entry_data.get("parameters", [])
+                temp = self._get_parameter(params, "air_temperature", "t")
+                precip = self._get_parameter(params, "precipitation_amount_median", "pmedian")
+                symbol = self._get_parameter(params, "symbol_code", "Wsymb2")
                 
                 if temp is not None:
                     daily_data[date_key]["temps"].append(temp)
