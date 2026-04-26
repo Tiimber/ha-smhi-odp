@@ -201,6 +201,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
 
         # AWTRIX animation services
+        async def handle_get_current_weather(call: ServiceCall):
+            """Handle the get_current_weather service call."""
+            entry_id = call.data.get("entry_id", entry.entry_id)
+            coord = hass.data[DOMAIN].get(entry_id)
+            if not coord:
+                _LOGGER.error(f"No coordinator found for entry_id: {entry_id}")
+                return {"success": False, "error": "No coordinator found"}
+
+            awtrix_service = hass.data[DOMAIN]["awtrix_service"]
+            forecast_data = coord.data
+            
+            payload = await hass.async_add_executor_job(
+                awtrix_service.generate_current_weather, forecast_data
+            )
+            
+            _LOGGER.info(f"Generated current weather payload")
+            return {"success": True, "payload": payload}
+
         async def handle_generate_today_awtrix(call: ServiceCall):
             """Handle the generate_today_awtrix service call."""
             entry_id = call.data.get("entry_id", entry.entry_id)
@@ -257,6 +275,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         hass.services.async_register(
             DOMAIN,
+            "get_current_weather",
+            handle_get_current_weather,
+            schema=SERVICE_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        hass.services.async_register(
+            DOMAIN,
             "generate_today_awtrix",
             handle_generate_today_awtrix,
             schema=SERVICE_SCHEMA,
@@ -305,6 +330,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass.services.async_remove(DOMAIN, "generate_today_gif")
             hass.services.async_remove(DOMAIN, "generate_tomorrow_gif")
             hass.services.async_remove(DOMAIN, "generate_week_gif")
+            hass.services.async_remove(DOMAIN, "get_current_weather")
             hass.services.async_remove(DOMAIN, "generate_today_awtrix")
             hass.services.async_remove(DOMAIN, "generate_tomorrow_awtrix")
             hass.services.async_remove(DOMAIN, "generate_week_awtrix")

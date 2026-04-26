@@ -112,6 +112,70 @@ class AwtrixWeatherService:
         """Initialize the AWTRIX service."""
         pass
 
+    def generate_current_weather(
+        self, forecast_data: dict[str, Any]
+    ) -> dict:
+        """
+        Generate a single comprehensive AWTRIX screen for current weather.
+        
+        Shows: Current weather icon + temp, next 2 hours as text
+        """
+        time_series = forecast_data.get("timeSeries", [])
+        
+        if not time_series:
+            _LOGGER.warning("No time series data available")
+            return {}
+        
+        # Get current hour (first entry)
+        current = time_series[0]
+        parameters = current.get("data") or current.get("parameters", {})
+        
+        temp = self._get_parameter(parameters, "air_temperature", "t")
+        symbol = self._get_parameter(parameters, "symbol_code", "Wsymb2")
+        precip = self._get_parameter(parameters, "precipitation_amount_median", "pmedian")
+        
+        if temp is None:
+            _LOGGER.warning("No temperature data")
+            return {}
+        
+        # Current temperature
+        temp_int = round(temp)
+        temp_color = get_temp_color(temp)
+        
+        # Get weather icon
+        icon_name = get_weather_icon_name(symbol or 2)
+        icon_pixels = ICONS.get(icon_name, ICONS.get("cloudy"))
+        draw_commands = icon_to_draw_commands(icon_pixels, offset_x=0, offset_y=0)
+        
+        # Build text with current + next hours
+        text_parts = [f" {temp_int}°"]
+        
+        # Add next 2-3 hours
+        for i in range(1, min(4, len(time_series))):
+            entry = time_series[i]
+            params = entry.get("data") or entry.get("parameters", {})
+            next_temp = self._get_parameter(params, "air_temperature", "t")
+            if next_temp:
+                text_parts.append(f"{round(next_temp)}°")
+        
+        text = " ".join(text_parts)
+        
+        # Add precipitation if significant
+        if precip and precip > 0.5:
+            text += f" {precip:.1f}mm"
+        
+        payload = {
+            "text": text,
+            "textColor": temp_color,
+            "draw": draw_commands,
+            "rainbow": False,
+            "scrollSpeed": 50,
+            "lifetime": 900  # 15 minutes
+        }
+        
+        _LOGGER.info(f"Generated current weather display: {text}")
+        return payload
+
     def _get_parameter(self, parameters, param_name, fallback_name=None):
         """
         Extract parameter value from SMHI data.
