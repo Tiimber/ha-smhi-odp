@@ -120,3 +120,55 @@ generate_week_awtrix:
     count:
       description: Number of frames generated.
       example: 7
+
+get_current_weather:
+  name: Get Current Weather Display
+  description: Generate a comprehensive single-screen weather display showing current + next 3 hours.
+  fields:
+    entry_id:
+      name: Entry ID
+      description: The config entry ID (optional, uses default if not specified).
+      required: false
+      example: "01KDTWFBR6XT3TXMX6RKWJD6YB"
+      selector:
+        text:
+  response:
+    success:
+      description: Whether the operation succeeded.
+      example: true
+    payload:
+      description: AWTRIX payload with weather icon and multiple temperatures.
+      example: {"text": " 6° 7° 8° 9°", "textColor": "#3296FF", "draw": [...]}
+
+parse_gif_to_frames:
+  name: Parse GIF to AWTRIX Frames
+  description: Parse a GIF file from /config/www/ and convert each frame to AWTRIX draw commands.
+  fields:
+    gif_name:
+      name: GIF Filename
+      description: Name of the GIF file in /config/www/ (e.g., "weather_today.gif").
+      required: true
+      example: "weather_today.gif"
+      selector:
+        text:
+    frame_duration:
+      name: Frame Duration
+      description: How long to display each frame in seconds.
+      required: false
+      default: 4
+      example: 4
+      selector:
+        number:
+          min: 1
+          max: 30
+          unit_of_measurement: "s"
+  response:
+    success:
+      description: Whether the operation succeeded.
+      example: true
+    frames:
+      description: Array of AWTRIX payload objects with draw commands for each frame.
+      example: [{"draw": [{"dp": [0, 0, "#FF0000"]}, ...], "duration": 4}]
+    count:
+      description: Number of frames parsed from the GIF.
+      example: 24

@@ -4,6 +4,9 @@ import json
 import logging
 from datetime import datetime, timedelta
 from typing import Any
+from pathlib import Path
+
+from PIL import Image
 
 from homeassistant.util import dt as dt_util
 
@@ -103,6 +106,68 @@ def get_temp_color(temp):
         return "#FF9600"  # Orange
     else:
         return "#FF3232"  # Red
+
+
+def parse_gif_to_frames(gif_path: str, frame_duration: int = 5) -> list[dict]:
+    """
+    Parse a GIF file and convert each frame to AWTRIX draw commands.
+    
+    Args:
+        gif_path: Path to the GIF file
+        frame_duration: How long to display each frame (seconds)
+    
+    Returns:
+        List of AWTRIX payload dicts with draw commands
+    """
+    try:
+        img = Image.open(gif_path)
+        frames = []
+        
+        # Get number of frames
+        n_frames = getattr(img, "n_frames", 1)
+        _LOGGER.info(f"Parsing GIF {gif_path}: {n_frames} frames")
+        
+        for frame_num in range(n_frames):
+            img.seek(frame_num)
+            
+            # Convert to RGB mode if needed
+            if img.mode != 'RGB':
+                frame_img = img.convert('RGB')
+            else:
+                frame_img = img.copy()
+            
+            # Get frame dimensions
+            width, height = frame_img.size
+            
+            # Extract pixels and create draw commands
+            draw_commands = []
+            pixels = frame_img.load()
+            
+            for y in range(height):
+                for x in range(width):
+                    pixel = pixels[x, y]
+                    # Skip black pixels (assumed background)
+                    if pixel != (0, 0, 0):
+                        color = f"#{pixel[0]:02X}{pixel[1]:02X}{pixel[2]:02X}"
+                        draw_commands.append({
+                            "dp": [x, y, color]
+                        })
+            
+            # Create AWTRIX payload for this frame
+            payload = {
+                "draw": draw_commands,
+                "duration": frame_duration
+            }
+            
+            frames.append(payload)
+            _LOGGER.debug(f"Frame {frame_num + 1}: {len(draw_commands)} draw commands")
+        
+        _LOGGER.info(f"Parsed {len(frames)} frames from {gif_path}")
+        return frames
+        
+    except Exception as e:
+        _LOGGER.error(f"Error parsing GIF {gif_path}: {e}")
+        return []
 
 
 class AwtrixWeatherService:

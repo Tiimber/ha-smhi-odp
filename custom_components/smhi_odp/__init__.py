@@ -30,6 +30,14 @@ SERVICE_SCHEMA = vol.Schema(
     }
 )
 
+# Schema for parse_gif_to_frames service
+PARSE_GIF_SCHEMA = vol.Schema(
+    {
+        vol.Required("gif_name"): cv.string,
+        vol.Optional("frame_duration", default=4): cv.positive_int,
+    }
+)
+
 # Define the platform you want to load (sensor)
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.WEATHER]
 
@@ -273,6 +281,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.info(f"Generated {len(frames)} AWTRIX frames for week")
             return {"success": True, "frames": frames, "count": len(frames)}
 
+        async def handle_parse_gif_to_frames(call: ServiceCall):
+            """Handle the parse_gif_to_frames service call."""
+            from .awtrix_service import parse_gif_to_frames
+            
+            gif_name = call.data.get("gif_name")
+            frame_duration = call.data.get("frame_duration", 4)
+            
+            if not gif_name:
+                _LOGGER.error("No gif_name provided")
+                return {"success": False, "error": "No gif_name provided"}
+            
+            # Construct path to GIF in /config/www/
+            gif_path = hass.config.path("www", gif_name)
+            
+            # Parse GIF to frames
+            frames = await hass.async_add_executor_job(
+                parse_gif_to_frames, gif_path, frame_duration
+            )
+            
+            if not frames:
+                _LOGGER.error(f"Failed to parse GIF: {gif_path}")
+                return {"success": False, "error": f"Failed to parse {gif_name}"}
+            
+            _LOGGER.info(f"Parsed {len(frames)} frames from {gif_name}")
+            return {"success": True, "frames": frames, "count": len(frames)}
+
+
         hass.services.async_register(
             DOMAIN,
             "get_current_weather",
@@ -299,6 +334,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "generate_week_awtrix",
             handle_generate_week_awtrix,
             schema=SERVICE_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        hass.services.async_register(
+            DOMAIN,
+            "parse_gif_to_frames",
+            handle_parse_gif_to_frames,
+            schema=PARSE_GIF_SCHEMA,
             supports_response=SupportsResponse.ONLY,
         )
 
@@ -334,6 +376,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass.services.async_remove(DOMAIN, "generate_today_awtrix")
             hass.services.async_remove(DOMAIN, "generate_tomorrow_awtrix")
             hass.services.async_remove(DOMAIN, "generate_week_awtrix")
+            hass.services.async_remove(DOMAIN, "parse_gif_to_frames")
 
             if "display_service" in hass.data[DOMAIN]:
                 hass.data[DOMAIN].pop("display_service")
