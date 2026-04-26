@@ -1,76 +1,78 @@
 - id: 'master_weather_display'
   alias: 'AWTRIX Weather - Master Display Loop'
-  description: Cycles through animated weather views (today, tomorrow, week) using actual GIF frame timing
+  description: Continuously cycles through animated weather views (today, tomorrow, week) with 20s delay between cycles
   triggers:
-  - minutes: /20
-    trigger: time_pattern
   - event: start
     trigger: homeassistant
   conditions: []
   actions:
-    # Generate and parse today's GIF (using GIF's original frame timing)
-    - service: smhi_odp.parse_gif_to_frames
-      data:
-        gif_name: 'weather_today.gif'
-      response_variable: today_frames
-    
-    # Loop through today's frames with actual GIF timing
+    # Infinite loop - cycles continuously through all weather views
     - repeat:
-        count: '{{ today_frames.frames | length }}'
+        while: []  # Empty condition = loop forever
         sequence:
-          - data:
-              topic: awtrix_966f54/custom/weather
-              payload: >
-                {{ today_frames.frames[repeat.index - 1] | to_json }}
-            action: mqtt.publish
+          # Generate and parse today's GIF (using GIF's original frame timing)
+          - service: smhi_odp.parse_gif_to_frames
+            data:
+              gif_name: 'weather_today.gif'
+            response_variable: today_frames
+          
+          # Loop through today's frames with actual GIF timing
+          - repeat:
+              count: '{{ today_frames.frames | length }}'
+              sequence:
+                - data:
+                    topic: awtrix_966f54/custom/weather
+                    payload: >
+                      {{ today_frames.frames[repeat.index - 1] | to_json }}
+                  action: mqtt.publish
+                - delay:
+                    milliseconds: '{{ today_frames.frames[repeat.index - 1].frame_delay_ms }}'
+          
+          # Small pause before next GIF
           - delay:
-              milliseconds: '{{ today_frames.frames[repeat.index - 1].frame_delay_ms }}'
-    
-    # Small pause before next GIF
-    - delay:
-        seconds: 2
-    
-    # Generate and parse tomorrow's GIF
-    - service: smhi_odp.parse_gif_to_frames
-      data:
-        gif_name: 'weather_tomorrow.gif'
-      response_variable: tomorrow_frames
-    
-    # Loop through tomorrow's frames with actual GIF timing
-    - repeat:
-        count: '{{ tomorrow_frames.frames | length }}'
-        sequence:
-          - data:
-              topic: awtrix_966f54/custom/weather
-              payload: >
-                {{ tomorrow_frames.frames[repeat.index - 1] | to_json }}
-            action: mqtt.publish
+              seconds: 2
+          
+          # Generate and parse tomorrow's GIF
+          - service: smhi_odp.parse_gif_to_frames
+            data:
+              gif_name: 'weather_tomorrow.gif'
+            response_variable: tomorrow_frames
+          
+          # Loop through tomorrow's frames with actual GIF timing
+          - repeat:
+              count: '{{ tomorrow_frames.frames | length }}'
+              sequence:
+                - data:
+                    topic: awtrix_966f54/custom/weather
+                    payload: >
+                      {{ tomorrow_frames.frames[repeat.index - 1] | to_json }}
+                  action: mqtt.publish
+                - delay:
+                    milliseconds: '{{ tomorrow_frames.frames[repeat.index - 1].frame_delay_ms }}'
+          
+          # Small pause before next GIF
           - delay:
-              milliseconds: '{{ tomorrow_frames.frames[repeat.index - 1].frame_delay_ms }}'
-    
-    # Small pause before next GIF
-    - delay:
-        seconds: 2
-    
-    # Generate and parse week's GIF
-    - service: smhi_odp.parse_gif_to_frames
-      data:
-        gif_name: 'weather_week.gif'
-      response_variable: week_frames
-    
-    # Loop through week's frames with actual GIF timing
-    - repeat:
-        count: '{{ week_frames.frames | length }}'
-        sequence:
-          - data:
-              topic: awtrix_966f54/custom/weather
-              payload: >
-                {{ week_frames.frames[repeat.index - 1] | to_json }}
-            action: mqtt.publish
+              seconds: 2
+          
+          # Generate and parse week's GIF
+          - service: smhi_odp.parse_gif_to_frames
+            data:
+              gif_name: 'weather_week.gif'
+            response_variable: week_frames
+          
+          # Loop through week's frames with actual GIF timing
+          - repeat:
+              count: '{{ week_frames.frames | length }}'
+              sequence:
+                - data:
+                    topic: awtrix_966f54/custom/weather
+                    payload: >
+                      {{ week_frames.frames[repeat.index - 1] | to_json }}
+                  action: mqtt.publish
+                - delay:
+                    milliseconds: '{{ week_frames.frames[repeat.index - 1].frame_delay_ms }}'
+          
+          # 20-second delay before repeating the cycle (placeholder for future clock display)
           - delay:
-              milliseconds: '{{ week_frames.frames[repeat.index - 1].frame_delay_ms }}'
-    
-    # Final pause before loop restarts (15s total wait)
-    - delay:
-        seconds: 15
+              seconds: 20
   mode: single
