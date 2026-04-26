@@ -1,0 +1,146 @@
+- id: 'multi_screen_weather_display'
+  alias: 'AWTRIX Weather - Multi-Screen Display with Page Transitions'
+  description: Uses AWTRIX native page cycling to smoothly transition between weather screens
+  triggers:
+  - event: start
+    trigger: homeassistant
+  conditions: []
+  actions:
+    # Infinite loop - cycles continuously through all weather views
+    - repeat:
+        while: []  # Empty condition = loop forever
+        sequence:
+          # ========== TODAY'S FORECAST ==========
+          # Generate multiple static screens for today (4 screens of 6 hours + black screen)
+          - service: smhi_odp.generate_today_screens
+            data:
+              entry_id: '01KDTWFBR6XT3TXMX6RKWJD6YB'
+            response_variable: today_screens
+          
+          # Send each screen as a separate custom app so AWTRIX cycles through them
+          - repeat:
+              count: '{{ today_screens.screens | length }}'
+              sequence:
+                - variables:
+                    screen_num: '{{ repeat.index }}'
+                    screen_data: '{{ today_screens.screens[repeat.index - 1] }}'
+                    app_name: 'weather_today_{{ screen_num }}'
+                
+                # Send this screen to its own custom app topic
+                - data:
+                    topic: 'awtrix_966f54/custom/{{ app_name }}'
+                    payload: >
+                      {
+                        "draw": {{ screen_data.draw | tojson }},
+                        "duration": {{ screen_data.duration }},
+                        "lifetime": 30
+                      }
+                  action: mqtt.publish
+                
+                # Small delay between sending screens (let MQTT settle)
+                - delay:
+                    milliseconds: 100
+          
+          # Let AWTRIX cycle through today's screens (AWTRIX handles the transitions)
+          # Wait for total duration: (num_screens * duration_per_screen)
+          - delay:
+              seconds: '{{ (today_screens.screens | length) * 3 }}'
+          
+          # Clear today's screens
+          - repeat:
+              count: '{{ today_screens.screens | length }}'
+              sequence:
+                - data:
+                    topic: 'awtrix_966f54/custom/weather_today_{{ repeat.index }}'
+                    payload: ''
+                  action: mqtt.publish
+          
+          # Small pause before tomorrow
+          - delay:
+              seconds: 1
+          
+          # ========== TOMORROW'S FORECAST ==========
+          - service: smhi_odp.generate_tomorrow_screens
+            data:
+              entry_id: '01KDTWFBR6XT3TXMX6RKWJD6YB'
+            response_variable: tomorrow_screens
+          
+          - repeat:
+              count: '{{ tomorrow_screens.screens | length }}'
+              sequence:
+                - variables:
+                    screen_num: '{{ repeat.index }}'
+                    screen_data: '{{ tomorrow_screens.screens[repeat.index - 1] }}'
+                    app_name: 'weather_tomorrow_{{ screen_num }}'
+                
+                - data:
+                    topic: 'awtrix_966f54/custom/{{ app_name }}'
+                    payload: >
+                      {
+                        "draw": {{ screen_data.draw | tojson }},
+                        "duration": {{ screen_data.duration }},
+                        "lifetime": 30
+                      }
+                  action: mqtt.publish
+                
+                - delay:
+                    milliseconds: 100
+          
+          - delay:
+              seconds: '{{ (tomorrow_screens.screens | length) * 3 }}'
+          
+          # Clear tomorrow's screens
+          - repeat:
+              count: '{{ tomorrow_screens.screens | length }}'
+              sequence:
+                - data:
+                    topic: 'awtrix_966f54/custom/weather_tomorrow_{{ repeat.index }}'
+                    payload: ''
+                  action: mqtt.publish
+          
+          - delay:
+              seconds: 1
+          
+          # ========== WEEK FORECAST ==========
+          - service: smhi_odp.generate_week_screens
+            data:
+              entry_id: '01KDTWFBR6XT3TXMX6RKWJD6YB'
+            response_variable: week_screens
+          
+          - repeat:
+              count: '{{ week_screens.screens | length }}'
+              sequence:
+                - variables:
+                    screen_num: '{{ repeat.index }}'
+                    screen_data: '{{ week_screens.screens[repeat.index - 1] }}'
+                    app_name: 'weather_week_{{ screen_num }}'
+                
+                - data:
+                    topic: 'awtrix_966f54/custom/{{ app_name }}'
+                    payload: >
+                      {
+                        "draw": {{ screen_data.draw | tojson }},
+                        "duration": {{ screen_data.duration }},
+                        "lifetime": 30
+                      }
+                  action: mqtt.publish
+                
+                - delay:
+                    milliseconds: 100
+          
+          - delay:
+              seconds: '{{ (week_screens.screens | length) * 3 }}'
+          
+          # Clear week's screens
+          - repeat:
+              count: '{{ week_screens.screens | length }}'
+              sequence:
+                - data:
+                    topic: 'awtrix_966f54/custom/weather_week_{{ repeat.index }}'
+                    payload: ''
+                  action: mqtt.publish
+          
+          # 20-second delay before repeating the cycle (placeholder for future clock display)
+          - delay:
+              seconds: 20
+  mode: single

@@ -281,6 +281,54 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.info(f"Generated {len(frames)} AWTRIX frames for week")
             return {"success": True, "frames": frames, "count": len(frames)}
 
+        async def handle_generate_today_screens(call: ServiceCall):
+            """Handle the generate_today_screens service call."""
+            entry_id = call.data.get("entry_id", entry.entry_id)
+            coord = hass.data[DOMAIN].get(entry_id)
+            if not coord:
+                _LOGGER.error(f"No coordinator found for entry_id: {entry_id}")
+                return {"success": False, "error": "No coordinator found"}
+
+            awtrix_service = hass.data[DOMAIN]["awtrix_service"]
+            screens = await hass.async_add_executor_job(
+                awtrix_service.generate_today_screens, coord.data
+            )
+            
+            _LOGGER.info(f"Generated {len(screens)} screens for today")
+            return {"success": True, "screens": screens, "count": len(screens)}
+
+        async def handle_generate_tomorrow_screens(call: ServiceCall):
+            """Handle the generate_tomorrow_screens service call."""
+            entry_id = call.data.get("entry_id", entry.entry_id)
+            coord = hass.data[DOMAIN].get(entry_id)
+            if not coord:
+                _LOGGER.error(f"No coordinator found for entry_id: {entry_id}")
+                return {"success": False, "error": "No coordinator found"}
+
+            awtrix_service = hass.data[DOMAIN]["awtrix_service"]
+            screens = await hass.async_add_executor_job(
+                awtrix_service.generate_tomorrow_screens, coord.data
+            )
+            
+            _LOGGER.info(f"Generated {len(screens)} screens for tomorrow")
+            return {"success": True, "screens": screens, "count": len(screens)}
+
+        async def handle_generate_week_screens(call: ServiceCall):
+            """Handle the generate_week_screens service call."""
+            entry_id = call.data.get("entry_id", entry.entry_id)
+            coord = hass.data[DOMAIN].get(entry_id)
+            if not coord:
+                _LOGGER.error(f"No coordinator found for entry_id: {entry_id}")
+                return {"success": False, "error": "No coordinator found"}
+
+            awtrix_service = hass.data[DOMAIN]["awtrix_service"]
+            screens = await hass.async_add_executor_job(
+                awtrix_service.generate_week_screens, coord.data
+            )
+            
+            _LOGGER.info(f"Generated {len(screens)} screens for week")
+            return {"success": True, "screens": screens, "count": len(screens)}
+
         async def handle_parse_gif_to_frames(call: ServiceCall):
             """Handle the parse_gif_to_frames service call."""
             from .awtrix_service import parse_gif_to_frames
@@ -341,6 +389,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "parse_gif_to_frames",
             handle_parse_gif_to_frames,
             schema=PARSE_GIF_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        hass.services.async_register(
+            DOMAIN,
+            "generate_today_screens",
+            handle_generate_today_screens,
+            schema=SERVICE_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        hass.services.async_register(
+            DOMAIN,
+            "generate_tomorrow_screens",
+            handle_generate_tomorrow_screens,
+            schema=SERVICE_SCHEMA,
+            supports_response=SupportsResponse.ONLY,
+        )
+        hass.services.async_register(
+            DOMAIN,
+            "generate_week_screens",
+            handle_generate_week_screens,
+            schema=SERVICE_SCHEMA,
             supports_response=SupportsResponse.ONLY,
         )
 

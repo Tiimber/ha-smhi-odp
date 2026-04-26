@@ -171,3 +171,69 @@ parse_gif_to_frames:
     count:
       description: Number of frames parsed from the GIF.
       example: 24
+
+generate_today_screens:
+  name: Generate Today Multi-Screen Display
+  description: Generate multiple static screens for today's hourly forecast (4 screens of 6 hours each + black separator). Use with AWTRIX page transitions.
+  fields:
+    entry_id:
+      name: Entry ID
+      description: The config entry ID (optional, uses default if not specified).
+      required: false
+      example: "abc123def456"
+      selector:
+        text:
+  response:
+    success:
+      description: Whether the operation succeeded.
+      example: true
+    screens:
+      description: Array of screen objects with draw commands and duration.
+      example: [{"draw": [{"dp": [0, 0, "#FF0000"]}], "duration": 3}]
+    count:
+      description: Number of screens generated.
+      example: 5
+
+generate_tomorrow_screens:
+  name: Generate Tomorrow Multi-Screen Display
+  description: Generate multiple static screens for tomorrow's forecast (2 screens for 4 time blocks + black separator). Use with AWTRIX page transitions.
+  fields:
+    entry_id:
+      name: Entry ID
+      description: The config entry ID (optional, uses default if not specified).
+      required: false
+      example: "abc123def456"
+      selector:
+        text:
+  response:
+    success:
+      description: Whether the operation succeeded.
+      example: true
+    screens:
+      description: Array of screen objects with draw commands and duration.
+      example: [{"draw": [{"dp": [0, 0, "#FF0000"]}], "duration": 3}]
+    count:
+      description: Number of screens generated.
+      example: 3
+
+generate_week_screens:
+  name: Generate Week Multi-Screen Display
+  description: Generate multiple static screens for 8-day forecast (4 screens of 2 days each + black separator). Use with AWTRIX page transitions.
+  fields:
+    entry_id:
+      name: Entry ID
+      description: The config entry ID (optional, uses default if not specified).
+      required: false
+      example: "abc123def456"
+      selector:
+        text:
+  response:
+    success:
+      description: Whether the operation succeeded.
+      example: true
+    screens:
+      description: Array of screen objects with draw commands and duration.
+      example: [{"draw": [{"dp": [0, 0, "#FF0000"]}], "duration": 3}]
+    count:
+      description: Number of screens generated.
+      example: 5

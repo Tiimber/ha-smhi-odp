@@ -177,12 +177,304 @@ def parse_gif_to_frames(gif_path: str, frame_duration: int = None) -> list[dict]
         return []
 
 
+def image_to_draw_commands(image):
+    """
+    Convert a PIL Image (32x8) to AWTRIX draw commands.
+    
+    Args:
+        image: PIL Image object (RGB mode, 32x8 pixels)
+    
+    Returns:
+        List of draw command dicts
+    """
+    draw_commands = []
+    pixels = image.load()
+    width, height = image.size
+    
+    for y in range(height):
+        for x in range(width):
+            pixel = pixels[x, y]
+            # Skip black pixels (assumed background)
+            if pixel != (0, 0, 0):
+                color = f"#{pixel[0]:02X}{pixel[1]:02X}{pixel[2]:02X}"
+                draw_commands.append({
+                    "dp": [x, y, color]
+                })
+    
+    return draw_commands
+
+
 class AwtrixWeatherService:
     """Service to generate AWTRIX weather animations."""
 
     def __init__(self):
         """Initialize the AWTRIX service."""
-        pass
+        from .display_service import WeatherDisplayService
+        self.display_service = WeatherDisplayService()
+
+    def generate_today_screens(self, forecast_data: dict[str, Any]) -> list[dict]:
+        """
+        Generate multiple static screens for today's hourly forecast.
+        
+        Splits the 24-hour forecast into 4 screens of 6 hours each.
+        Each screen shows icons and temps for those hours.
+        Last screen is completely black for visual separation.
+        
+        Returns:
+            List of screen dicts with draw commands and duration
+        """
+        time_series = forecast_data.get("timeSeries", [])
+        
+        if not time_series:
+            _LOGGER.warning("No time series data available")
+            return []
+        
+        screens = []
+        hours_per_screen = 6
+        
+        # Generate 4 screens (0-5h, 6-11h, 12-17h, 18-23h)
+        for screen_num in range(4):
+            start_hour = screen_num * hours_per_screen
+            end_hour = start_hour + hours_per_screen
+            
+            # Create a 32x8 image for this screen
+            img = Image.new('RGB', (32, 8), (0, 0, 0))
+            
+            # Draw hours for this screen (each hour gets ~5 pixels width)
+            x_offset = 0
+            for hour_idx in range(start_hour, min(end_hour, len(time_series))):
+                hour_data = time_series[hour_idx]
+                parameters = hour_data.get("parameters", {})
+                
+                # Get temperature and symbol
+                temp = parameters.get("air_temperature")
+                symbol = parameters.get("symbol_code")
+                
+                if temp is not None and symbol is not None:
+                    # Draw weather icon (8x8) at top, but we only have 8px height
+                    # So we'll do: 3px for hour number, 5px for icon/temp
+                    icon_name = get_weather_icon_name(symbol)
+                    icon_pixels = ICONS.get(icon_name, ICONS["cloudy"])
+                    
+                    # Scale down icon to fit (use top 5 pixels of the 8x8 icon)
+                    for y in range(5):
+                        for x in range(5):
+                            if y < len(icon_pixels) and x < len(icon_pixels[y]):
+                                pixel = icon_pixels[y][x]
+                                if pixel != 0:
+                                    img.putpixel((x_offset + x, y), pixel)
+                    
+                    # Draw temperature below (last 3 pixels)
+                    temp_color = get_temp_color(temp)
+                    temp_str = f"{int(temp)}"
+                    # Simple pixel representation of the number
+                    self.display_service._draw_text_3x5(
+                        None, img, x_offset, 5, temp_str, temp_color
+                    )
+                
+                x_offset += 5  # 5 pixels per hour + 1 spacing
+            
+            # Convert image to draw commands
+            draw_commands = image_to_draw_commands(img)
+            
+            screens.append({
+                "draw": draw_commands,
+                "duration": 3  # Show each screen for 3 seconds
+            })
+            
+            _LOGGER.debug(f"Today screen {screen_num + 1}: {len(draw_commands)} pixels")
+        
+        # Add black screen at the end
+        screens.append({
+            "draw": [],  # Empty = black screen
+            "duration": 1
+        })
+        
+        return screens
+
+    def generate_tomorrow_screens(self, forecast_data: dict[str, Any]) -> list[dict]:
+        """
+        Generate static screens for tomorrow's forecast.
+        
+        Splits the 4 blocks into 2 screens (night+morning, afternoon+evening).
+        Last screen is completely black.
+        
+        Returns:
+            List of screen dicts
+        """
+        time_series = forecast_data.get("timeSeries", [])
+        
+        if not time_series:
+            return []
+        
+        # Aggregate into 4 blocks (as in original GIF generation)
+        blocks = []
+        for i in range(4):
+            start_idx = i * 6 + 24  # Skip first 24 hours (today)
+            end_idx = start_idx + 6
+            
+            if start_idx < len(time_series):
+                block_hours = time_series[start_idx:min(end_idx, len(time_series))]
+                # Average temperature, most common symbol, sum precipitation
+                if block_hours:
+                    temps = []
+                    symbols = []
+                    precip = []
+                    
+                    for hour in block_hours:
+                        params = hour.get("parameters", {})
+                        if params.get("air_temperature") is not None:
+                            temps.append(params["air_temperature"])
+                        if params.get("symbol_code") is not None:
+                            symbols.append(params["symbol_code"])
+                        if params.get("precipitation_amount_median") is not None:
+                            precip.append(params["precipitation_amount_median"])
+                    
+                    if temps and symbols:
+                        blocks.append({
+                            "temp": sum(temps) / len(temps),
+                            "symbol": max(set(symbols), key=symbols.count),
+                            "precip": sum(precip) if precip else 0
+                        })
+        
+        screens = []
+        
+        # Screen 1: Night + Morning
+        img = Image.new('RGB', (32, 8), (0, 0, 0))
+        for block_idx in range(min(2, len(blocks))):
+            block = blocks[block_idx]
+            icon_name = get_weather_icon_name(block["symbol"])
+            icon_pixels = ICONS.get(icon_name, ICONS["cloudy"])
+            
+            x_offset = block_idx * 16  # 16 pixels per block
+            
+            # Draw icon
+            self.display_service._draw_icon(None, img, x_offset, 0, icon_pixels)
+            
+            # Draw temp
+            temp_color = get_temp_color(block["temp"])
+            temp_str = f"{int(block['temp'])}"
+            self.display_service._draw_text_3x5(
+                None, img, x_offset + 9, 2, temp_str, temp_color
+            )
+        
+        screens.append({
+            "draw": image_to_draw_commands(img),
+            "duration": 3
+        })
+        
+        # Screen 2: Afternoon + Evening
+        if len(blocks) > 2:
+            img = Image.new('RGB', (32, 8), (0, 0, 0))
+            for block_idx in range(2, min(4, len(blocks))):
+                block = blocks[block_idx]
+                icon_name = get_weather_icon_name(block["symbol"])
+                icon_pixels = ICONS.get(icon_name, ICONS["cloudy"])
+                
+                x_offset = (block_idx - 2) * 16
+                
+                # Draw icon
+                self.display_service._draw_icon(None, img, x_offset, 0, icon_pixels)
+                
+                # Draw temp
+                temp_color = get_temp_color(block["temp"])
+                temp_str = f"{int(block['temp'])}"
+                self.display_service._draw_text_3x5(
+                    None, img, x_offset + 9, 2, temp_str, temp_color
+                )
+            
+            screens.append({
+                "draw": image_to_draw_commands(img),
+                "duration": 3
+            })
+        
+        # Black screen
+        screens.append({
+            "draw": [],
+            "duration": 1
+        })
+        
+        return screens
+
+    def generate_week_screens(self, forecast_data: dict[str, Any]) -> list[dict]:
+        """
+        Generate static screens for 8-day forecast.
+        
+        Splits into 4 screens of 2 days each.
+        Last screen is completely black.
+        
+        Returns:
+            List of screen dicts
+        """
+        time_series = forecast_data.get("timeSeries", [])
+        
+        if not time_series:
+            return []
+        
+        # Aggregate into daily forecasts
+        daily_forecasts = []
+        for day_offset in range(8):
+            start_idx = day_offset * 24
+            end_idx = start_idx + 24
+            
+            if start_idx < len(time_series):
+                day_hours = time_series[start_idx:min(end_idx, len(time_series))]
+                
+                if day_hours:
+                    temps = []
+                    symbols = []
+                    
+                    for hour in day_hours:
+                        params = hour.get("parameters", {})
+                        if params.get("air_temperature") is not None:
+                            temps.append(params["air_temperature"])
+                        if params.get("symbol_code") is not None:
+                            symbols.append(params["symbol_code"])
+                    
+                    if temps and symbols:
+                        daily_forecasts.append({
+                            "temp": sum(temps) / len(temps),
+                            "symbol": max(set(symbols), key=symbols.count)
+                        })
+        
+        screens = []
+        
+        # Generate 4 screens (2 days each)
+        for screen_num in range(4):
+            img = Image.new('RGB', (32, 8), (0, 0, 0))
+            
+            for day_idx in range(2):
+                forecast_idx = screen_num * 2 + day_idx
+                
+                if forecast_idx < len(daily_forecasts):
+                    forecast = daily_forecasts[forecast_idx]
+                    icon_name = get_weather_icon_name(forecast["symbol"])
+                    icon_pixels = ICONS.get(icon_name, ICONS["cloudy"])
+                    
+                    x_offset = day_idx * 16  # 16 pixels per day
+                    
+                    # Draw icon
+                    self.display_service._draw_icon(None, img, x_offset, 0, icon_pixels)
+                    
+                    # Draw temp
+                    temp_color = get_temp_color(forecast["temp"])
+                    temp_str = f"{int(forecast['temp'])}"
+                    self.display_service._draw_text_3x5(
+                        None, img, x_offset + 9, 2, temp_str, temp_color
+                    )
+            
+            screens.append({
+                "draw": image_to_draw_commands(img),
+                "duration": 3
+            })
+        
+        # Black screen
+        screens.append({
+            "draw": [],
+            "duration": 1
+        })
+        
+        return screens
 
     def generate_current_weather(
         self, forecast_data: dict[str, Any]
