@@ -108,16 +108,16 @@ def get_temp_color(temp):
         return "#FF3232"  # Red
 
 
-def parse_gif_to_frames(gif_path: str, frame_duration: int = 5) -> list[dict]:
+def parse_gif_to_frames(gif_path: str, frame_duration: int = None) -> list[dict]:
     """
     Parse a GIF file and convert each frame to AWTRIX draw commands.
     
     Args:
         gif_path: Path to the GIF file
-        frame_duration: How long to display each frame (seconds)
+        frame_duration: Optional override for frame duration in milliseconds (uses GIF's duration if not set)
     
     Returns:
-        List of AWTRIX payload dicts with draw commands
+        List of AWTRIX payload dicts with draw commands and frame_delay_ms for automation timing
     """
     try:
         img = Image.open(gif_path)
@@ -129,6 +129,13 @@ def parse_gif_to_frames(gif_path: str, frame_duration: int = 5) -> list[dict]:
         
         for frame_num in range(n_frames):
             img.seek(frame_num)
+            
+            # Get frame duration from GIF (in milliseconds), default to 100ms if not specified
+            gif_duration_ms = img.info.get('duration', 100)
+            
+            # Use override if provided, otherwise use GIF's duration
+            duration_ms = frame_duration if frame_duration is not None else gif_duration_ms
+            duration_seconds = duration_ms / 1000.0
             
             # Convert to RGB mode if needed
             if img.mode != 'RGB':
@@ -156,11 +163,11 @@ def parse_gif_to_frames(gif_path: str, frame_duration: int = 5) -> list[dict]:
             # Create AWTRIX payload for this frame
             payload = {
                 "draw": draw_commands,
-                "duration": frame_duration
+                "frame_delay_ms": duration_ms  # For automation to know how long to wait
             }
             
             frames.append(payload)
-            _LOGGER.debug(f"Frame {frame_num + 1}: {len(draw_commands)} draw commands")
+            _LOGGER.debug(f"Frame {frame_num + 1}: {len(draw_commands)} pixels, {duration_seconds:.3f}s delay")
         
         _LOGGER.info(f"Parsed {len(frames)} frames from {gif_path}")
         return frames

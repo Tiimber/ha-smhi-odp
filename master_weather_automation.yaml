@@ -1,6 +1,6 @@
 - id: 'master_weather_display'
   alias: 'AWTRIX Weather - Master Display Loop'
-  description: Cycles through animated weather views (today, tomorrow, week) using actual GIF frames
+  description: Cycles through animated weather views (today, tomorrow, week) using actual GIF frame timing
   triggers:
   - minutes: /20
     trigger: time_pattern
@@ -8,14 +8,13 @@
     trigger: homeassistant
   conditions: []
   actions:
-    # Generate and parse today's GIF
+    # Generate and parse today's GIF (using GIF's original frame timing)
     - service: smhi_odp.parse_gif_to_frames
       data:
         gif_name: 'weather_today.gif'
-        frame_duration: 4
       response_variable: today_frames
     
-    # Loop through today's frames
+    # Loop through today's frames with actual GIF timing
     - repeat:
         count: '{{ today_frames.frames | length }}'
         sequence:
@@ -25,7 +24,7 @@
                 {{ today_frames.frames[repeat.index - 1] | to_json }}
             action: mqtt.publish
           - delay:
-              seconds: 4
+              milliseconds: '{{ today_frames.frames[repeat.index - 1].frame_delay_ms }}'
     
     # Small pause before next GIF
     - delay:
@@ -35,10 +34,9 @@
     - service: smhi_odp.parse_gif_to_frames
       data:
         gif_name: 'weather_tomorrow.gif'
-        frame_duration: 5
       response_variable: tomorrow_frames
     
-    # Loop through tomorrow's frames
+    # Loop through tomorrow's frames with actual GIF timing
     - repeat:
         count: '{{ tomorrow_frames.frames | length }}'
         sequence:
@@ -48,7 +46,7 @@
                 {{ tomorrow_frames.frames[repeat.index - 1] | to_json }}
             action: mqtt.publish
           - delay:
-              seconds: 5
+              milliseconds: '{{ tomorrow_frames.frames[repeat.index - 1].frame_delay_ms }}'
     
     # Small pause before next GIF
     - delay:
@@ -58,10 +56,9 @@
     - service: smhi_odp.parse_gif_to_frames
       data:
         gif_name: 'weather_week.gif'
-        frame_duration: 5
       response_variable: week_frames
     
-    # Loop through week's frames
+    # Loop through week's frames with actual GIF timing
     - repeat:
         count: '{{ week_frames.frames | length }}'
         sequence:
@@ -71,9 +68,9 @@
                 {{ week_frames.frames[repeat.index - 1] | to_json }}
             action: mqtt.publish
           - delay:
-              seconds: 5
+              milliseconds: '{{ week_frames.frames[repeat.index - 1].frame_delay_ms }}'
     
-    # Final pause before loop restarts (20s total wait)
+    # Final pause before loop restarts (15s total wait)
     - delay:
         seconds: 15
   mode: single

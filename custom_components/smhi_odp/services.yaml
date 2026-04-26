@@ -142,7 +142,7 @@ get_current_weather:
 
 parse_gif_to_frames:
   name: Parse GIF to AWTRIX Frames
-  description: Parse a GIF file from /config/www/ and convert each frame to AWTRIX draw commands.
+  description: Parse a GIF file from /config/www/ and convert each frame to AWTRIX draw commands. Uses the GIF's original frame timing.
   fields:
     gif_name:
       name: GIF Filename
@@ -152,16 +152,15 @@ parse_gif_to_frames:
       selector:
         text:
     frame_duration:
-      name: Frame Duration
-      description: How long to display each frame in seconds.
+      name: Frame Duration Override (optional)
+      description: Override frame duration in milliseconds. If not set, uses the GIF's original frame timing.
       required: false
-      default: 4
-      example: 4
+      example: 100
       selector:
         number:
-          min: 1
-          max: 30
-          unit_of_measurement: "s"
+          min: 50
+          max: 5000
+          unit_of_measurement: "ms"
   response:
     success:
       description: Whether the operation succeeded.
