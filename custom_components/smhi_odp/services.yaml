@@ -54,3 +54,69 @@ generate_week_gif:
     size:
       description: Size of the GIF in bytes.
       example: 45000
+
+generate_today_awtrix:
+  name: Generate Today AWTRIX Animation
+  description: Generate AWTRIX animation frames for today's hourly weather forecast (6 hours).
+  fields:
+    entry_id:
+      name: Entry ID
+      description: The config entry ID (optional, uses default if not specified).
+      required: false
+      example: "01KDTWFBR6XT3TXMX6RKWJD6YB"
+      selector:
+        text:
+  response:
+    success:
+      description: Whether the operation succeeded.
+      example: true
+    frames:
+      description: Array of AWTRIX payload objects for each hour.
+      example: [{"text": " 15°", "textColor": "#32FF64", "draw": [...], "duration": 5}]
+    count:
+      description: Number of frames generated.
+      example: 6
+
+generate_tomorrow_awtrix:
+  name: Generate Tomorrow AWTRIX Animation
+  description: Generate AWTRIX animation frames for tomorrow's forecast (4 time blocks).
+  fields:
+    entry_id:
+      name: Entry ID
+      description: The config entry ID (optional, uses default if not specified).
+      required: false
+      example: "01KDTWFBR6XT3TXMX6RKWJD6YB"
+      selector:
+        text:
+  response:
+    success:
+      description: Whether the operation succeeded.
+      example: true
+    frames:
+      description: Array of AWTRIX payload objects for each time block.
+      example: [{"text": " 12°", "textColor": "#3296FF", "draw": [...], "duration": 5}]
+    count:
+      description: Number of frames generated.
+      example: 4
+
+generate_week_awtrix:
+  name: Generate Week AWTRIX Animation
+  description: Generate AWTRIX animation frames for weekly forecast (7 days).
+  fields:
+    entry_id:
+      name: Entry ID
+      description: The config entry ID (optional, uses default if not specified).
+      required: false
+      example: "01KDTWFBR6XT3TXMX6RKWJD6YB"
+      selector:
+        text:
+  response:
+    success:
+      description: Whether the operation succeeded.
+      example: true
+    frames:
+      description: Array of AWTRIX payload objects for each day.
+      example: [{"text": " 18/10°", "textColor": "#32FF64", "draw": [...], "duration": 5}]
+    count:
+      description: Number of frames generated.
+      example: 7
