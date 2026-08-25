@@ -1,15 +1,15 @@
 {
   "domain": "smhi_odp",
   "name": "SMHI ODP",
+  "after_dependencies": ["recorder"],
   "codeowners": [
     "@Tiimber"
   ],
-  "after_dependencies": ["recorder"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/Tiimber/smhi_odp",
+  "documentation": "https://github.com/Tiimber/ha-smhi-odp",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/Tiimber/smhi_odp/issues",
+  "issue_tracker": "https://github.com/Tiimber/ha-smhi-odp/issues",
   "requirements": ["Pillow>=10.0.0"],
   "version": "1.1.0"
 }
