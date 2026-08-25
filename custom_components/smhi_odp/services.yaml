@@ -5,7 +5,9 @@ generate_device_panel_screen:
     row and a 48-hour temperature graph) and save it to
     /config/www/smhi_odp_panel.jpg, ready for a wall panel or dashboard to
     fetch. Does nothing unless "Enable device panel image export" is turned
-    on in this config entry's options.
+    on in this config entry's options. Returns success, filename, size and
+    next_refresh_s - the seconds until it is worth rendering again, which is
+    just after the top of the next hour.
   fields:
     entry_id:
       name: Entry ID
@@ -17,19 +19,3 @@ generate_device_panel_screen:
       example: "01KDTWFBR6XT3TXMX6RKWJD6YB"
       selector:
         text:
-  response:
-    success:
-      description: Whether the render succeeded.
-      example: true
-    filename:
-      description: The filename written under /config/www/.
-      example: "smhi_odp_panel.jpg"
-    size:
-      description: Size of the rendered JPEG in bytes.
-      example: 28000
-    next_refresh_s:
-      description: >
-        Seconds until it is worth rendering again - just after the top of the
-        next hour, when the forecast row's leading "next two hours" slots roll
-        over. Useful for panels that have no clock of their own.
-      example: 1320

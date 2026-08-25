@@ -4,6 +4,7 @@
   "codeowners": [
     "@Tiimber"
   ],
+  "after_dependencies": ["recorder"],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/Tiimber/smhi_odp",
