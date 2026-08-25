@@ -35,7 +35,7 @@ Note! Much of the code (and tests) was written by AI (Gemini and Copilot), and m
 
 1.  Open HACS in Home Assistant.
 2.  Go to **Integrations** > **Triple dots** (top right) > **Custom repositories**.
-3.  Paste the URL of this repository: `https://github.com/Tiimber/smhi_odp`
+3.  Paste the URL of this repository: `https://github.com/Tiimber/ha-smhi-odp`
 4.  Select **Integration** as the category.
 5.  Click **Add**.
 6.  Find **SMHI ODP** in the list and install it.
@@ -120,7 +120,7 @@ The integration creates the following sensors:
 
 ## Issues & Debugging
 
-If you encounter issues, please check the [Issue Tracker](https://github.com/Tiimber/smhi_odp/issues).
+If you encounter issues, please check the [Issue Tracker](https://github.com/Tiimber/ha-smhi-odp/issues).
 To enable debug logging, add the following to your `configuration.yaml`:
 
 ```yaml
