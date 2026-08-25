@@ -1,22 +1,36 @@
 {
-    "title": "SMHI ODP",
-    "config": {
-        "step": {
-            "user": {
-                "title": "SMHI ODP",
-                "description": "Välj ett namn och en plats för väderprognosen.",
-                "data": {
-                    "name": "Namn",
-                    "location": "Plats"
-                }
-            }
-        },
-        "error": {
-            "cannot_connect": "Misslyckades med att ansluta till API:et. Kontrollera din anslutning.",
-            "unknown": "Ett okänt fel inträffade."
-        },
-        "abort": {
-            "already_configured": "Denna plats är redan konfigurerad."
+  "title": "SMHI ODP",
+  "config": {
+    "step": {
+      "user": {
+        "title": "SMHI ODP",
+        "description": "Välj ett namn och en plats för väderprognosen.",
+        "data": {
+          "name": "Namn",
+          "location": "Plats"
         }
+      }
+    },
+    "error": {
+      "cannot_connect": "Misslyckades med att ansluta till API:et. Kontrollera din anslutning.",
+      "unknown": "Ett okänt fel inträffade."
+    },
+    "abort": {
+      "already_configured": "Denna plats är redan konfigurerad."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "SMHI ODP-alternativ",
+        "description": "Extrafunktioner för den här platsen.",
+        "data": {
+          "enable_device_panel_export": "Aktivera bildexport för display"
+        },
+        "data_description": {
+          "enable_device_panel_export": "Låter tjänsten smhi_odp.generate_device_panel_screen rendera en väderbild på 480x480 till /config/www/smhi_odp_panel.jpg, för att visas på en väggpanel eller instrumentpanel. Avstängd som standard."
+        }
+      }
+    }
+  }
 }

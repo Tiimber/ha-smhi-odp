@@ -27,6 +27,7 @@ Note! Much of the code (and tests) was written by AI (Gemini and Copilot), and m
 *   **10-Day Forecast**: Daily sensors showing the maximum temperature for the day, with detailed forecast data available as attributes.
 *   **Localization**: Fully localized for English and Swedish.
 *   **Easy Configuration**: Setup via the Home Assistant UI.
+*   **Device panel image** (optional): render a 480x480 weather image for a wall panel or dashboard. See [Device panel image export](#device-panel-image-export).
 
 ## Installation
 
@@ -53,6 +54,50 @@ Note! Much of the code (and tests) was written by AI (Gemini and Copilot), and m
 3.  Enter a friendly name (e.g., "Home").
 4.  Enter your **Latitude** and **Longitude**.
 5.  Click **Submit**.
+
+## Device panel image export
+
+Optional, and **off by default** — turning it off changes nothing about the
+rest of the integration.
+
+Small wall panels (ESP32-class touch displays and similar) can usually decode
+a JPEG, but laying out and anti-aliasing a whole weather screen on-device is
+another matter. This renders the screen here instead, so the device only has
+to fetch one image and put it on screen.
+
+The rendered 480x480 image contains:
+
+*   a hero card with the current condition icon, temperature and chance of rain
+*   a five-slot forecast row: the next two hours individually, then the next
+    two parts of the day (morning / midday / afternoon / evening / night) as
+    averages, then either tomorrow's range or a further part of the day
+*   a 48-hour temperature graph from the start of today to the end of tomorrow,
+    with 5-degree gridlines and a marker at the current time
+
+The part of the graph before "now" is filled in from the recorder's history for
+the weather entity, since SMHI's API only ever returns forecast data.
+
+### Enabling it
+
+1.  Go to **Settings** > **Devices & Services** > **SMHI ODP** > **Configure**.
+2.  Turn on **Enable device panel image export**.
+
+### Rendering
+
+Call `smhi_odp.generate_device_panel_screen`, which writes
+`/config/www/smhi_odp_panel.jpg` (reachable at `/local/smhi_odp_panel.jpg`):
+
+```yaml
+action: smhi_odp.generate_device_panel_screen
+data:
+  entry_id: YOUR_CONFIG_ENTRY_ID   # optional, but set it if you have several locations
+```
+
+The image is rendered on demand, so it is current as of the call. The response
+includes `next_refresh_s`: the number of seconds until just after the top of
+the next hour, when the forecast row's leading "next two hours" slots roll
+over. Panels without a clock of their own can use that to schedule their next
+request; anything else can simply re-render on whatever schedule suits.
 
 ## Sensors
 
@@ -93,3 +138,7 @@ Data provided by [SMHI Open Data](https://www.smhi.se/data/oppna-data).
 ## License
 
 This project is licensed under the MIT License. See [LICENSE](LICENSE).
+
+Bundled third-party assets (weather icons and a font, both used only by the
+device panel image export) are covered by their own permissive licences — see
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

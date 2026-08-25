@@ -16,6 +16,11 @@ class SmhiOdpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    @staticmethod
+    def async_get_options_flow(config_entry):
+        """Get the options flow for this handler."""
+        return SmhiOdpOptionsFlow()
+
     async def async_step_user(self, user_input=None):
         """Handle the initial step."""
         errors = {}
@@ -83,3 +88,24 @@ class SmhiOdpConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         response = await client.get(api_url)
         _LOGGER.debug("API response status code: %s", response.status_code)
         response.raise_for_status()
+
+
+class SmhiOdpOptionsFlow(config_entries.OptionsFlow):
+    """Options for a SMHI ODP config entry.
+
+    Currently just the opt-in toggle for the device panel image export
+    (the generate_device_panel_screen service). Off by default, so the
+    integration behaves exactly as before for anyone not using it.
+    """
+
+    async def async_step_init(self, user_input=None):
+        if user_input is not None:
+            return self.async_create_entry(title="", data=user_input)
+
+        current = self.config_entry.options.get("enable_device_panel_export", False)
+        data_schema = vol.Schema(
+            {
+                vol.Optional("enable_device_panel_export", default=current): bool,
+            }
+        )
+        return self.async_show_form(step_id="init", data_schema=data_schema)

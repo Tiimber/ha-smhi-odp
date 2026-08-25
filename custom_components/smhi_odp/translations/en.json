@@ -18,5 +18,19 @@
     "abort": {
       "already_configured": "This location is already configured."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "SMHI ODP options",
+        "description": "Extra features for this location.",
+        "data": {
+          "enable_device_panel_export": "Enable device panel image export"
+        },
+        "data_description": {
+          "enable_device_panel_export": "Lets the smhi_odp.generate_device_panel_screen service render a 480x480 weather image to /config/www/smhi_odp_panel.jpg, for a wall panel or dashboard to display. Off by default."
+        }
+      }
+    }
   }
 }

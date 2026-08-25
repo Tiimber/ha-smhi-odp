@@ -2,11 +2,14 @@
 import logging
 from datetime import timedelta
 import httpx
+import voluptuous as vol
 
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.helpers import httpx_client
+from homeassistant.helpers import httpx_client, config_validation as cv, entity_registry as er
+from homeassistant.helpers.sun import is_up
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 from homeassistant.const import (
     CONF_LATITUDE,
     CONF_LONGITUDE,
@@ -16,8 +19,15 @@ from homeassistant.const import (
 
 # This import must match your folder name and const.py
 from .const import DOMAIN
+from .device_panel_service import generate_weather_screen
 
 _LOGGER = logging.getLogger(__name__)
+
+DEVICE_PANEL_SERVICE_SCHEMA = vol.Schema(
+    {
+        vol.Optional("entry_id"): cv.string,
+    }
+)
 
 # Define the platform you want to load (sensor)
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.WEATHER]
@@ -68,6 +78,41 @@ class SmhiDataUpdateCoordinator(DataUpdateCoordinator):
             raise UpdateFailed(f"Connection error fetching data from SMHI: {err}") from err
 
 
+async def _fetch_temperature_history(hass: HomeAssistant, entry_id: str, start, end):
+    """Real recorder history for the weather entity's temperature attribute.
+
+    Used to backfill the device panel's temperature graph for the part of
+    today that has already happened. SMHI's API is forecast-only - it has
+    nothing for hours that already elapsed - but the recorder has been
+    logging this entity's state (attributes included) all along, so no
+    bespoke rolling-memory mechanism is needed.
+    """
+    entity_id = er.async_get(hass).async_get_entity_id("weather", DOMAIN, f"{entry_id}_weather")
+    if not entity_id:
+        _LOGGER.warning("No weather entity registered for entry_id %s", entry_id)
+        return []
+
+    from homeassistant.components.recorder import history, get_instance
+
+    def _query():
+        return history.state_changes_during_period(
+            hass, start, end, entity_id, include_start_time_state=True
+        )
+
+    try:
+        result = await get_instance(hass).async_add_executor_job(_query)
+    except Exception as err:  # recorder not set up, entity purged, etc.
+        _LOGGER.warning("Could not fetch history for %s: %s", entity_id, err)
+        return []
+
+    points = []
+    for state in result.get(entity_id, []):
+        temp = state.attributes.get("temperature")
+        if temp is not None:
+            points.append((dt_util.as_local(state.last_changed), temp))
+    return points
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up SMHI ODP from a config entry."""
     
@@ -84,6 +129,84 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Store the coordinator in hass.data
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
+
+    # Register services (only once for the domain)
+    if not hass.services.has_service(DOMAIN, "generate_device_panel_screen"):
+
+        async def handle_generate_device_panel_screen(call: ServiceCall):
+            """Render the device panel weather screen and save it to /config/www/.
+
+            Opt-in: does nothing unless the target config entry has
+            "enable_device_panel_export" turned on in its options (see
+            SmhiOdpOptionsFlow). Off by default, so this stays invisible
+            to anyone who hasn't asked for it.
+            """
+            entry_id = call.data.get("entry_id", entry.entry_id)
+            target_entry = hass.config_entries.async_get_entry(entry_id)
+            coord = hass.data[DOMAIN].get(entry_id)
+
+            if not target_entry or not coord:
+                _LOGGER.error("No config entry/coordinator found for entry_id: %s", entry_id)
+                return {"success": False, "error": "No coordinator found"}
+
+            if not target_entry.options.get("enable_device_panel_export", False):
+                _LOGGER.warning(
+                    "generate_device_panel_screen called but device panel export "
+                    "is not enabled in options for entry %s",
+                    entry_id,
+                )
+                return {"success": False, "error": "enable_device_panel_export is off"}
+
+            now = dt_util.now()
+            today_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            history_points = await _fetch_temperature_history(
+                hass, entry_id, today_midnight, now
+            )
+
+            jpeg_bytes = await hass.async_add_executor_job(
+                generate_weather_screen, coord.data, is_up(hass), history_points
+            )
+
+            filename = "smhi_odp_panel.jpg"
+            filepath = hass.config.path("www", filename)
+
+            def write_file():
+                with open(filepath, "wb") as f:
+                    f.write(jpeg_bytes)
+
+            await hass.async_add_executor_job(write_file)
+            _LOGGER.info("Saved %s: %d bytes", filename, len(jpeg_bytes))
+
+            # Tell the caller when to come back. A small wall-powered panel
+            # typically has no RTC or NTP - only a millisecond counter - so
+            # it cannot work out "just after the top of the hour" itself.
+            # Deciding it here also means the cadence can be retuned without
+            # reflashing the device.
+            #
+            # The image is always current (it renders on demand), so this
+            # isn't about waiting for a scheduled render. It's about the
+            # forecast row's leading slots being "the next two hours", which
+            # go stale the moment the clock rolls over. By just after the
+            # hour the coordinator's own hourly poll has usually landed too.
+            next_hour = (now + timedelta(hours=1)).replace(
+                minute=0, second=0, microsecond=0
+            )
+            next_refresh_s = int((next_hour - now).total_seconds()) + 120
+
+            return {
+                "success": True,
+                "filename": filename,
+                "size": len(jpeg_bytes),
+                "next_refresh_s": next_refresh_s,
+            }
+
+        hass.services.async_register(
+            DOMAIN,
+            "generate_device_panel_screen",
+            handle_generate_device_panel_screen,
+            schema=DEVICE_PANEL_SERVICE_SCHEMA,
+            supports_response=SupportsResponse.OPTIONAL,
+        )
 
     # Forward the setup to the sensor platform
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
