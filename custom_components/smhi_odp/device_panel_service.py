@@ -582,27 +582,34 @@ def _draw_graph(draw, hours, temps, divider_hour, now_hour):
     smooth_points = _catmull_rom_smooth(raw_points, samples_per_segment=16)
     draw.line(smooth_points, fill=TEXT_PRIMARY, width=3, joint="curve")
 
-    # current-time marker
-    marker_temp = _interp_temps(valid, now_hour)
-    if marker_temp is not None:
-        now_x, now_y = x_px(now_hour), y_px(marker_temp)
+    # Current-time marker, read off the curve that was actually drawn.
+    # It must not be recomputed from the raw temperatures: the line is
+    # both moving-averaged and spline-fitted, so near a bend it sits
+    # visibly away from the raw value and the dot would float off it.
+    now_x = x_px(now_hour)
+    now_y = _y_on_polyline(smooth_points, now_x)
+    if now_y is not None:
         draw.ellipse([now_x - 5, now_y - 5, now_x + 5, now_y + 5], fill=ACCENT)
 
 
-def _interp_temps(valid, h):
-    """Linear lookup into the (hour, temp) pairs with no gaps, for a
-    marker position that may fall between two integer hours."""
-    if not valid:
+def _y_on_polyline(points, x):
+    """The y of a polyline at a given x, so a marker lands exactly on it.
+
+    Safe for the Catmull-Rom output because the input x values are evenly
+    spaced (one per hour), which keeps the spline's x component monotonic.
+    """
+    if not points:
         return None
-    if h <= valid[0][0]:
-        return valid[0][1]
-    if h >= valid[-1][0]:
-        return valid[-1][1]
-    for (h0, v0), (h1, v1) in zip(valid, valid[1:]):
-        if h0 <= h <= h1:
-            frac = (h - h0) / (h1 - h0) if h1 != h0 else 0
-            return v0 + (v1 - v0) * frac
-    return None
+    if x <= points[0][0]:
+        return points[0][1]
+    if x >= points[-1][0]:
+        return points[-1][1]
+    for (x0, y0), (x1, y1) in zip(points, points[1:]):
+        if x0 <= x <= x1:
+            if x1 == x0:
+                return y0
+            return y0 + (y1 - y0) * (x - x0) / (x1 - x0)
+    return points[-1][1]
 
 
 def generate_weather_screen(coordinator_data, is_daytime=True, history_points=None):
