@@ -43,3 +43,69 @@ async def test_sensors(hass: HomeAssistant, mock_smhi_api) -> None:
     assert state
     assert state.state == "18.0"  # HA converts to km/h
 
+
+async def test_cloud_base_sensor(hass: HomeAssistant, mock_smhi_api) -> None:
+    """Cloud base is published in metres, as its own sensor.
+
+    Home Assistant has no standard weather-entity property for it, and it is
+    the difference between low stratus on the hills and high cirrus.
+    """
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"name": "Home", "latitude": 59.3293, "longitude": 18.0686},
+    )
+    entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    state = hass.states.get("sensor.smhi_odp_home_cloud_base")
+    assert state
+    assert float(state.state) == 841
+    assert state.attributes["unit_of_measurement"] == "m"
+    assert state.attributes["device_class"] == "distance"
+
+
+async def test_cloud_base_reports_nothing_when_there_is_no_cloud(
+    hass: HomeAssistant, mock_smhi_api
+) -> None:
+    """A clear sky has no cloud base. Report nothing, never zero.
+
+    SMHI uses a negative value for "not applicable", and zero would claim the
+    cloud is sitting on the ground.
+    """
+    mock_smhi_api.return_value["timeSeries"][0]["data"]["cloud_base_altitude"] = -9
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"name": "Home", "latitude": 59.3293, "longitude": 18.0686},
+    )
+    entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    state = hass.states.get("sensor.smhi_odp_home_cloud_base")
+    assert state
+    assert state.state in ("unknown", "unavailable")
+
+
+async def test_cloud_base_rejects_the_9999_sentinel(
+    hass: HomeAssistant, mock_smhi_api
+) -> None:
+    """🛑 SMHI uses 9999 for "no value", and it appears even under full cloud.
+
+    Observed live: a forecast hour reporting eight octas of cloud and a base of
+    9999. Passing that through would put the cloud layer ten kilometres up.
+    """
+    mock_smhi_api.return_value["timeSeries"][0]["data"]["cloud_base_altitude"] = 9999
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"name": "Home", "latitude": 59.3293, "longitude": 18.0686},
+    )
+    entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    state = hass.states.get("sensor.smhi_odp_home_cloud_base")
+    assert state
+    assert state.state in ("unknown", "unavailable")

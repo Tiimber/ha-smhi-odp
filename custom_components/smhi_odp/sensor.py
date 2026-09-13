@@ -18,6 +18,7 @@ from homeassistant.const import (
     UnitOfTemperature,
     UnitOfPressure,
     UnitOfSpeed,
+    UnitOfLength,
     DEGREE,
 )
 
@@ -46,6 +47,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
             SmhiWindDirectionSensor(coordinator, entry),
             SmhiPressureSensor(coordinator, entry),
             SmhiPrecipitationSensor(coordinator, entry),
+            SmhiCloudBaseSensor(coordinator, entry),
         ]
 
         # _LOGGER.warning("SMHI_ODP: Creating current condition sensors...")
@@ -248,6 +250,47 @@ class SmhiPrecipitationSensor(SmhiBaseSensor):
         if self.current_data:
             return self.current_data.get("precipitation_amount_mean")
         return None
+
+
+class SmhiCloudBaseSensor(SmhiBaseSensor):
+    """Height of the bottom of the cloud, in metres above the ground.
+
+    Not a quantity Home Assistant has a standard weather-entity property for,
+    so it is published as its own sensor. It is worth having: cloud cover says
+    how much of the sky is covered, and this says how far up it is, which is
+    the difference between low grey stratus sitting on the hills and high
+    cirrus. Aviation cares for obvious reasons; anything drawing a sky needs it
+    to put the layer in the right place.
+
+    SMHI reports it in metres, with two sentinels for "no value": a negative
+    number, and **9999**. The second one matters — it turns up even when the
+    sky is reported as fully overcast, so it cannot be treated as "no cloud",
+    and publishing it as a height would put the base ten kilometres up. Both
+    are reported as unknown, which is what they mean.
+    """
+
+    #: Anything at or above this is SMHI's sentinel, not a measurement. Real
+    #: bases in this product run from a couple of hundred metres to about two
+    #: thousand; the sentinel is 9999.
+    _SENTINEL_METRES = 9000
+
+    def __init__(self, coordinator, entry):
+        """Initialize the sensor."""
+        super().__init__(coordinator, entry, "Cloud base")
+        self._attr_native_unit_of_measurement = UnitOfLength.METERS
+        self._attr_device_class = SensorDeviceClass.DISTANCE
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_icon = "mdi:cloud-arrow-down-outline"
+
+    @property
+    def native_value(self):
+        """Return the state of the sensor."""
+        if not self.current_data:
+            return None
+        value = self.current_data.get("cloud_base_altitude")
+        if value is None or value <= 0 or value >= self._SENTINEL_METRES:
+            return None
+        return value
 
 
 # --- Daily Forecast Sensor ---

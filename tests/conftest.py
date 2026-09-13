@@ -60,6 +60,7 @@ def mock_smhi_api_fixture():
                         # sky — so 4 is exactly half covered, not 4%.
                         "cloud_area_fraction": 4,
                         "visibility_in_air": 22.6,
+                        "cloud_base_altitude": 841,
                         "wind_speed_of_gust": 9.0,
                         "weather_symbol": 1,  # Sunny/Clear
                     },
