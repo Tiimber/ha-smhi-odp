@@ -146,9 +146,38 @@ class SmhiWeather(CoordinatorEntity, WeatherEntity):
         return self._get_current_data("wind_speed")
 
     @property
+    def native_wind_gust_speed(self) -> float | None:
+        """Return the gust speed."""
+        return self._get_current_data("wind_speed_of_gust")
+
+    @property
     def wind_bearing(self) -> float | None:
         """Return the wind bearing."""
         return self._get_current_data("wind_from_direction")
+
+    @property
+    def cloud_coverage(self) -> int | None:
+        """Return total cloud cover as a percentage.
+
+        SMHI reports cloudiness in **octas** — eighths of the sky, the
+        traditional unit a human observer uses because it is what you can
+        actually judge by eye. Home Assistant wants a percentage, so the two
+        differ by a factor of 12.5 and not by 10.
+
+        This is worth publishing rather than leaving consumers to infer
+        cloudiness from the condition string: `partlycloudy` covers everything
+        from two octas to six, and anything drawing a sky or estimating solar
+        output needs the number rather than the bucket.
+        """
+        octas = self._get_current_data("cloud_area_fraction")
+        if octas is None:
+            return None
+        return round(max(0, min(8, octas)) * 100 / 8)
+
+    @property
+    def native_visibility(self) -> float | None:
+        """Return the visibility, in kilometres."""
+        return self._get_current_data("visibility_in_air")
 
     @property
     def extra_state_attributes(self) -> dict:

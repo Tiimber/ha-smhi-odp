@@ -56,6 +56,11 @@ def mock_smhi_api_fixture():
                         "wind_from_direction": 180.0,
                         "air_pressure_at_mean_sea_level": 1012.0,
                         "precipitation_amount_mean": 0.0,
+                        # SMHI reports cloudiness in octas — eighths of the
+                        # sky — so 4 is exactly half covered, not 4%.
+                        "cloud_area_fraction": 4,
+                        "visibility_in_air": 22.6,
+                        "wind_speed_of_gust": 9.0,
                         "weather_symbol": 1,  # Sunny/Clear
                     },
                 }
